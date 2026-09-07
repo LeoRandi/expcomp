@@ -1,0 +1,62 @@
+name: expcomp
+description: "A new Flutter project."
+
+publish_to: 'none' 
+version: 0.0.1
+
+environment:
+  sdk: ^3.9.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/sundered_keep/tiles/
+    - assets/sundered_keep/icons/
+    - assets/pixel_ui/showcase/
+    - assets/pixel_ui/showcase/sheets_16grid/04_mar_costas/16x16_tileset_water_grass_and_sand/voda_pesok_trava_revision_2.png.png
+    - assets/monsters/
+    # Nested monster sprite folders require explicit asset entries.
+    - assets/monsters/dark_fantasy_creatures_cc0/raw_originals/01_front_back_priority/Assets_for_Tuxemon/
+    - assets/monsters/dark_fantasy_creatures_cc0/raw_originals/02_dark_fantasy/Blood_Wraith/
+    - assets/monsters/dark_fantasy_creatures_cc0/raw_originals/02_dark_fantasy/Bloody_Werewolf/
+    - assets/monsters/dark_fantasy_creatures_cc0/raw_originals/02_dark_fantasy/Earth_under_Antichrist/
+    - assets/monsters/dark_fantasy_creatures_cc0/raw_originals/02_dark_fantasy/Ghost_Monster/
+    - assets/monsters/dark_fantasy_creatures_cc0/raw_originals/02_dark_fantasy/Mummy_Enemies/
+    - assets/monsters/dark_fantasy_creatures_cc0/raw_originals/02_dark_fantasy/Necromancer_Spritesheet/
+    - assets/monsters/dark_fantasy_creatures_cc0/raw_originals/02_dark_fantasy/Plagueking_48x48/
+    - assets/monsters/dark_fantasy_creatures_cc0/raw_originals/02_dark_fantasy/Public_Domain_Wesnoth_Sprites/WesnothSprites/
+    - assets/monsters/dark_fantasy_creatures_cc0/raw_originals/02_dark_fantasy/Red_Demons_Animated/
+    - assets/monsters/dark_fantasy_creatures_cc0/raw_originals/02_dark_fantasy/Singular_Direction_Monsters_Battlers/
+    - assets/monsters/dark_fantasy_creatures_cc0/raw_originals/02_dark_fantasy/Skeletons_Rework/PNG/48x64_scale/
+    - assets/monsters/dark_fantasy_creatures_cc0/raw_originals/02_dark_fantasy/Wraith_48x48/
+    - assets/monsters/dark_fantasy_creatures_cc0/raw_originals/02_dark_fantasy/Zombie_RPG_Sprites/Zombies/
+    - assets/monsters/dark_fantasy_creatures_cc0/raw_originals/03_stylized_fantasy/Dregbin/
+    - assets/monsters/dark_fantasy_creatures_cc0/raw_originals/03_stylized_fantasy/Goblin_Monster/
+    - assets/monsters/dark_fantasy_creatures_cc0/raw_originals/03_stylized_fantasy/Loveable_Rogue/
+    - assets/monsters/dark_fantasy_creatures_cc0/raw_originals/03_stylized_fantasy/Ranger_64x64/
+    - assets/monsters/dark_fantasy_creatures_cc0/raw_originals/03_stylized_fantasy/Swordsman_64x64/
+    - assets/monsters/dark_fantasy_creatures_cc0/raw_originals/03_stylized_fantasy/Trolls/
+    - assets/monsters/dark_fantasy_creatures_cc0/raw_originals/03_stylized_fantasy/Wizard/
+    - assets/monsters/dark_fantasy_creatures_cc0/sprites_64x64/01_front_back_priority/Assets_for_Tuxemon/
+    - assets/monsters/dark_fantasy_creatures_cc0/sprites_64x64/01_front_back_priority/Cultist/
+    - assets/monsters/dark_fantasy_creatures_cc0/sprites_64x64/01_front_back_priority/Demon_Devil_4_views/
+    - assets/monsters/dark_fantasy_creatures_cc0/sprites_64x64/02_dark_fantasy/Blood_Wraith/
+    - assets/monsters/dark_fantasy_creatures_cc0/sprites_64x64/02_dark_fantasy/Bloody_Werewolf/
+    - assets/monsters/dark_fantasy_creatures_cc0/sprites_64x64/02_dark_fantasy/Earth_under_Antichrist/
+    - assets/monsters/dark_fantasy_creatures_cc0/sprites_64x64/02_dark_fantasy/Ghost_Monster/
+    - assets/monsters/dark_fantasy_creatures_cc0/sprites_64x64/02_dark_fantasy/Mummy_Enemies/
+    - assets/monsters/dark_fantasy_creatures_cc0/sprites_64x64/02_dark_fantasy/Necromancer_Spritesheet/
+    - assets/monsters/dark_fantasy_creatures_cc0/sprites_64x64/02_dark_fantasy/Red_Demons_Animated/
+    - assets/monsters/dark_fantasy_creatures_cc0/sprites_64x64/02_dark_fantasy/Skeletons_Rework/
