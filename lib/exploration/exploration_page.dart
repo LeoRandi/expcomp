@@ -18,7 +18,8 @@ class ExplorationPage extends StatefulWidget {
 }
 
 class _ExplorationPageState extends State<ExplorationPage> {
-  static const cells = 7;
+  static const cells = 20;
+  static const visibleCells = 10.5;
   int _column = cells ~/ 2;
   int _row = cells ~/ 2;
   bool _faceLeft = false;
@@ -79,65 +80,75 @@ class _ExplorationPageState extends State<ExplorationPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF111216),
-      body: SafeArea(
-        child: Focus(
-          focusNode: _focus,
-          autofocus: true,
-          onKeyEvent: _onKey,
-          child: Column(
-            children: [
-              SizedBox(
-                height: 88,
-                child: PixelPanel.expanded(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 10,
+      backgroundColor: Colors.black,
+      body: Focus(
+        focusNode: _focus,
+        autofocus: true,
+        onKeyEvent: _onKey,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final insets = MediaQuery.paddingOf(context);
+            final usableHeight = math.max(
+              0.0,
+              constraints.maxHeight - insets.vertical - 88,
+            );
+            // Preserve the tile scale from the original framed viewport.
+            final tile =
+                math.min(
+                  math.min(
+                    constraints.maxWidth - insets.horizontal - 24,
+                    560.0,
                   ),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: SizedBox(
-                      width: 60,
-                      height: 66,
-                      child: Material(
-                        color: const Color(0xFF242026),
-                        shape: const _HexagonBorder(),
-                        clipBehavior: Clip.antiAlias,
-                        child: InkWell(
-                          onTap: _showPlayer,
-                          child: const Semantics(
-                            button: true,
-                            label: 'Player information',
-                            child: Center(
-                              child: Icon(
-                                Icons.close,
-                                color: Color(0xFFC35C55),
-                                size: 34,
+                  usableHeight * .62,
+                ) /
+                visibleCells;
+            final controlsSize = math.min(280.0, usableHeight * .34);
+            return Stack(
+              fit: StackFit.expand,
+              children: [
+                _board(Size(constraints.maxWidth, constraints.maxHeight), tile),
+                SafeArea(
+                  child: Column(
+                    children: [
+                      SizedBox(
+                        height: 88,
+                        child: PixelPanel.expanded(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 10,
+                          ),
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: SizedBox(
+                              width: 60,
+                              height: 66,
+                              child: Material(
+                                color: const Color(0xFF242026),
+                                shape: const _HexagonBorder(),
+                                clipBehavior: Clip.antiAlias,
+                                child: InkWell(
+                                  onTap: _showPlayer,
+                                  child: Semantics(
+                                    button: true,
+                                    label: 'Player information',
+                                    child: const Center(
+                                      child: Icon(
+                                        Icons.close,
+                                        color: Color(0xFFC35C55),
+                                        size: 34,
+                                      ),
+                                    ),
+                                  ),
+                                ),
                               ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                  ),
-                ),
-              ),
-              Expanded(
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final boardSize = math.min(
-                      math.min(constraints.maxWidth - 24, 560.0),
-                      constraints.maxHeight * .62,
-                    );
-                    final controlsSize = math.min(
-                      280.0,
-                      constraints.maxHeight * .34,
-                    );
-                    return Column(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        Center(child: _board(boardSize)),
-                        SizedBox(
+                      const Spacer(),
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: SizedBox(
                           width: controlsSize,
                           height: controlsSize,
                           child: Stack(
@@ -177,36 +188,44 @@ class _ExplorationPageState extends State<ExplorationPage> {
                             ],
                           ),
                         ),
-                      ],
-                    );
-                  },
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            );
+          },
         ),
       ),
     );
   }
 
-  Widget _board(double size) {
-    final tile = size / cells;
-    return Container(
-      decoration: BoxDecoration(
-        border: Border.all(color: _gold.withValues(alpha: .45)),
-        boxShadow: const [BoxShadow(color: Colors.black54, blurRadius: 24)],
-      ),
-      child: SizedBox(
-        width: size,
-        height: size,
+  Widget _board(Size size, double tile) {
+    final playerLeft = (size.width - tile) / 2;
+    final playerTop = (size.height - tile) / 2;
+    return SizedBox(
+      key: const ValueKey('world-viewport'),
+      width: size.width,
+      height: size.height,
+      child: ClipRect(
         child: Stack(
           children: [
-            Positioned.fill(child: CustomPaint(painter: _FloorPainter(cells))),
             AnimatedPositioned(
               duration: const Duration(milliseconds: 150),
               curve: Curves.easeInOut,
-              left: _column * tile,
-              top: _row * tile,
+              // Do not clamp the camera at world edges: the player stays centered.
+              left: playerLeft - _column * tile,
+              top: playerTop - _row * tile,
+              width: cells * tile,
+              height: cells * tile,
+              child: CustomPaint(
+                key: const ValueKey('world-grid'),
+                painter: _FloorPainter(cells, _column, _row),
+              ),
+            ),
+            Positioned(
+              left: playerLeft,
+              top: playerTop,
               width: tile,
               height: tile,
               child: Semantics(
@@ -273,8 +292,10 @@ class _ExplorationPageState extends State<ExplorationPage> {
 }
 
 class _FloorPainter extends CustomPainter {
-  const _FloorPainter(this.cells);
+  const _FloorPainter(this.cells, this.playerColumn, this.playerRow);
   final int cells;
+  final int playerColumn;
+  final int playerRow;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -300,12 +321,31 @@ class _FloorPainter extends CustomPainter {
           canvas.drawPath(crack, paint);
           paint.style = PaintingStyle.fill;
         }
+        // Square rings: diagonal neighbors count as one tile away, too.
+        final distance = math.max(
+          (x - playerColumn).abs(),
+          (y - playerRow).abs(),
+        );
+        final darkness = switch (distance) {
+          < 5 => 0.0,
+          5 => 0.5,
+          6 => 0.75,
+          7 => 0.9,
+          _ => 1.0,
+        };
+        if (darkness > 0) {
+          paint.color = Colors.black.withValues(alpha: darkness);
+          canvas.drawRect(Rect.fromLTWH(x * tile, y * tile, tile, tile), paint);
+        }
       }
     }
   }
 
   @override
-  bool shouldRepaint(_FloorPainter oldDelegate) => cells != oldDelegate.cells;
+  bool shouldRepaint(_FloorPainter oldDelegate) =>
+      cells != oldDelegate.cells ||
+      playerColumn != oldDelegate.playerColumn ||
+      playerRow != oldDelegate.playerRow;
 }
 
 class _DiamondBorder extends _HexagonBorder {
