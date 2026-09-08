@@ -1,8 +1,9 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../global_presentation/pixel_ui/pixel_ui.dart';
-import '../creatures/showcase_party.dart';
-import 'turn_order.dart';
+import 'battle_engine.dart';
+import 'battle_move.dart';
+import 'combatant_motion.dart';
 
 const _ink = Color(0xFFE5DAC5);
 const _brass = Color(0xFFAA8C59);
@@ -20,61 +21,85 @@ class _BattlePageState extends State<BattlePage> {
   bool _resolving = false;
   int _round = 1;
   final _random = math.Random();
-  String _message = 'Choose a move for Ally 1';
+  String _message = 'Choose a move for Briar';
+  int _actionPulse = 0;
+  String? _actingId;
+  Set<String> _hitIds = {};
+
+  final _roster = createShowcaseBattle();
+  List<BattleCreature> get _allies =>
+      _roster.where((c) => c.side == BattleSide.allies).toList();
+  List<BattleCreature> get _enemies =>
+      _roster.where((c) => c.side == BattleSide.enemies).toList();
 
   Future<void> _confirm() async {
     if (_selection == null || _resolving) return;
     _commands[_activeAlly] = _selection;
-    if (_activeAlly == 0) {
+    if (_activeAlly == 0 && _allies[1].alive) {
       setState(() {
         _activeAlly = 1;
         _selection = null;
-        _message = 'Choose a move for Ally 2';
+        _message = 'Choose a move for ${_allies[1].name}';
       });
       return;
     }
-    final actions = orderBySpeed(
-      [
-        for (var i = 0; i < 2; i++)
-          (
-            speed: showcaseParty[i].stats.spe,
-            message: 'Ally ${i + 1} uses Move ${_commands[i]! + 1}',
-          ),
-        for (var i = 0; i < 2; i++)
-          (
-            speed: showcaseParty[i].species.baseStats.spe,
-            message: 'Enemy ${i + 1} takes its turn',
-          ),
-      ],
-      (actor) => actor.speed,
-      _random,
-    );
+    final actions = orderActions([
+      for (var i = 0; i < 2; i++)
+        if (_allies[i].alive && _commands[i] != null)
+          BattleAction(_allies[i], _allies[i].moves[_commands[i]!]),
+      for (final enemy in _enemies.where((c) => c.alive))
+        BattleAction(enemy, enemy.moves[(_round - 1) % enemy.moves.length]),
+    ], _random);
     setState(() {
       _resolving = true;
       _selection = null;
-      _message = actions.first.message;
     });
-    // UI-only resolution: no damage, stats, or combat rules yet.
-    for (final message in [
-      ...actions.skip(1).map((action) => action.message),
-      'Round $_round resolved',
-    ]) {
-      await Future<void>.delayed(const Duration(milliseconds: 650));
+    for (final action in actions) {
       if (!mounted) return;
-      setState(() => _message = message);
+      if (!action.user.alive) continue;
+      setState(() {
+        _actionPulse++;
+        _actingId = action.user.id;
+        _hitIds = {};
+        _message = '${action.user.name}: ${action.move.name}';
+      });
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+      if (!mounted) return;
+      final results = resolveAction(action, _roster);
+      setState(() {
+        _hitIds = results
+            .where((r) => r.damage > 0)
+            .map((r) => r.target.id)
+            .toSet();
+        final details = results
+            .map(
+              (r) =>
+                  '${r.target.name}: ${[if (r.damage > 0) '-${r.damage} HP', if (r.healing > 0) '+${r.healing} HP', if (r.note.isNotEmpty) r.note].join(' ')}',
+            )
+            .join(', ');
+        _message = '${action.user.name}: ${action.move.name}\n$details';
+      });
+      await Future<void>.delayed(const Duration(milliseconds: 600));
     }
-    await Future<void>.delayed(const Duration(milliseconds: 650));
     if (!mounted) return;
-    if (_round == 3) {
+    endRound(_roster);
+    final defeated =
+        !_allies.any((c) => c.alive) || !_enemies.any((c) => c.alive);
+    setState(
+      () => _message = defeated ? 'Battle finished' : 'Round $_round resolved',
+    );
+    await Future<void>.delayed(const Duration(milliseconds: 800));
+    if (!mounted) return;
+    if (_round == 3 || defeated) {
       Navigator.of(context).pop();
       return;
     }
     setState(() {
       _round++;
-      _activeAlly = 0;
+      _activeAlly = _allies.indexWhere((c) => c.alive);
       _commands.fillRange(0, 2, null);
       _resolving = false;
-      _message = 'Choose a move for Ally 1';
+      _message = 'Choose a move for ${_allies[_activeAlly].name}';
     });
   }
 
@@ -105,7 +130,7 @@ class _BattlePageState extends State<BattlePage> {
               child: Column(
                 children: [
                   SizedBox(
-                    height: 32,
+                    height: 64,
                     child: Center(
                       child: Text(
                         _message,
@@ -114,7 +139,7 @@ class _BattlePageState extends State<BattlePage> {
                         style: const TextStyle(
                           color: _ink,
                           fontFamily: 'monospace',
-                          fontSize: 13,
+                          fontSize: 11,
                         ),
                       ),
                     ),
@@ -157,6 +182,7 @@ class _BattlePageState extends State<BattlePage> {
                                         excluding: ally != _activeAlly,
                                         child: _MoveHexagon(
                                           key: ValueKey('ally-hexagon-$ally'),
+                                          moves: _allies[ally].moves,
                                           selected: ally == _activeAlly
                                               ? _selection
                                               : _commands[ally],
@@ -178,6 +204,24 @@ class _BattlePageState extends State<BattlePage> {
                     ),
                   ),
                   const SizedBox(height: 8),
+                  SizedBox(
+                    height: 42,
+                    child: Center(
+                      child: Text(
+                        _selection == null
+                            ? 'Select a move'
+                            : _moveDescription(
+                                _allies[_activeAlly].moves[_selection!],
+                              ),
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: _ink,
+                          fontFamily: 'monospace',
+                          fontSize: 11,
+                        ),
+                      ),
+                    ),
+                  ),
                   SizedBox(
                     height: 48,
                     width: double.infinity,
@@ -208,10 +252,11 @@ class _BattlePageState extends State<BattlePage> {
             child: Padding(
               padding: EdgeInsets.only(left: i == 1 ? 12 : 0),
               child: PixelResourceBar.expanded(
-                value: 1,
-                maximum: 1,
+                value: (allies ? _allies : _enemies)[i].hp.toDouble(),
+                maximum: (allies ? _allies : _enemies)[i].stats.maxHp
+                    .toDouble(),
                 label: '${allies ? 'ALLY' : 'ENEMY'} ${i + 1}',
-                showValues: false,
+                showValues: true,
                 tileExtent: 6,
                 tone: allies
                     ? PixelControlTone.positive
@@ -246,12 +291,28 @@ class _BattlePageState extends State<BattlePage> {
                   Expanded(
                     child: Padding(
                       padding: const EdgeInsets.all(3),
-                      child: PixelAssetSprite(
-                        key: ValueKey('${allies ? 'ally' : 'enemy'}-$i'),
-                        assetPath: allies
-                            ? showcaseParty[i].species.backAsset
-                            : showcaseParty[i].species.frontAsset,
-                        semanticLabel: '${allies ? 'Ally' : 'Enemy'} ${i + 1}',
+                      child: CombatantMotion(
+                        key: ValueKey('motion-${allies ? 'ally' : 'enemy'}-$i'),
+                        allied: allies,
+                        actionPulse:
+                            _actingId == (allies ? _allies : _enemies)[i].id
+                            ? _actionPulse
+                            : 0,
+                        hitPulse:
+                            _hitIds.contains(
+                              (allies ? _allies : _enemies)[i].id,
+                            )
+                            ? _actionPulse
+                            : 0,
+                        child: PixelAssetSprite(
+                          key: ValueKey('${allies ? 'ally' : 'enemy'}-$i'),
+                          assetPath: (allies ? _allies : _enemies)[i].asset,
+                          opacity: (allies ? _allies : _enemies)[i].alive
+                              ? 1
+                              : .25,
+                          semanticLabel:
+                              '${allies ? 'Ally' : 'Enemy'} ${i + 1}',
+                        ),
                       ),
                     ),
                   ),
@@ -263,6 +324,10 @@ class _BattlePageState extends State<BattlePage> {
     ),
   );
 }
+
+String _moveDescription(BattleMove move) =>
+    '${move.split.name.toUpperCase()} | Potency ${move.potency ?? '-'} | Priority ${move.priority}\n'
+    '${move.targetLabel}';
 
 // Three equal rhombi meet at the center of a point-up hexagon.
 Path _sector(Size size, int index) {
@@ -290,10 +355,12 @@ class _MoveHexagon extends StatelessWidget {
     required this.selected,
     required this.enabled,
     required this.onSelected,
+    required this.moves,
   });
   final int? selected;
   final bool enabled;
   final ValueChanged<int> onSelected;
+  final List<BattleMove> moves;
   @override
   Widget build(BuildContext context) => Stack(
     fit: StackFit.expand,
@@ -311,24 +378,40 @@ class _MoveHexagon extends StatelessWidget {
                 button: true,
                 selected: selected == i,
                 enabled: enabled,
-                label: 'Move ${i + 1}',
-                child: Align(
-                  alignment: [
-                    const Alignment(0, -.5),
-                    const Alignment(-.5, .25),
-                    const Alignment(.5, .25),
-                  ][i],
-                  child: Text(
-                    '${i + 1}\nMOVE ${i + 1}',
-                    key: ValueKey('move-option-$i'),
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: enabled ? _ink : _brass,
-                      fontFamily: 'monospace',
-                      fontSize: 14,
-                      height: 1.5,
-                    ),
-                  ),
+                label: moves[i].name,
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    // Position by sector coordinates, not Align's remaining
+                    // space (which moves wider labels toward the divider).
+                    final centerX = i == 0 ? .5 : (i == 1 ? .25 : .75);
+                    final centerY = i == 0 ? .25 : .625;
+                    final width = constraints.maxWidth * (i == 0 ? .54 : .38);
+                    final height = constraints.maxHeight * .18;
+                    return Stack(
+                      children: [
+                        Positioned(
+                          left: constraints.maxWidth * centerX - width / 2,
+                          top: constraints.maxHeight * centerY - height / 2,
+                          width: width,
+                          height: height,
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              '${i + 1}\n${moves[i].name}',
+                              key: ValueKey('move-option-$i'),
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: enabled ? _ink : _brass,
+                                fontFamily: 'monospace',
+                                fontSize: 14,
+                                height: 1.5,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
                 ),
               ),
             ),

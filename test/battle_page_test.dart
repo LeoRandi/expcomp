@@ -45,6 +45,37 @@ void main() {
         of: find.byKey(ValueKey('ally-hexagon-$ally')),
         matching: find.byKey(ValueKey('move-option-$move')),
       );
+      void expectLabelsInsideSectors() {
+        for (var ally = 0; ally < 2; ally++) {
+          for (var move = 0; move < 3; move++) {
+            final label = option(ally, move);
+            final clip = find
+                .ancestor(of: label, matching: find.byType(ClipPath))
+                .first;
+            final clipBox = tester.renderObject<RenderBox>(clip);
+            final path = tester
+                .widget<ClipPath>(clip)
+                .clipper!
+                .getClip(clipBox.size);
+            final bounds = tester.getRect(label);
+            for (final corner in [
+              bounds.topLeft,
+              bounds.topRight,
+              bounds.bottomLeft,
+              bounds.bottomRight,
+            ]) {
+              expect(
+                path.contains(clipBox.globalToLocal(corner)),
+                isTrue,
+                reason:
+                    'Ally $ally move $move must fit entirely inside its sector',
+              );
+            }
+          }
+        }
+      }
+
+      expectLabelsInsideSectors();
       // The exposed inactive half must not select a command.
       await tester.tapAt(Offset(hexagon(1).right - 12, hexagon(1).center.dy));
       await tester.pumpAndSettle();
@@ -58,24 +89,40 @@ void main() {
       expect(hexagon(1).width, greaterThan(hexagon(0).width));
       expect(hexagon(0).overlaps(hexagon(1)), isTrue);
       expect(hexagon(0).left, lessThan(hexagon(1).left));
+      expectLabelsInsideSectors();
       expect(confirm().onPressed, isNull);
       await tester.tap(option(1, 2));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('confirm-move')));
       await tester.pump();
-      expect(find.text('Ally 1 uses Move 1'), findsOneWidget);
+      expect(find.textContaining('FLAMEWARD'), findsWidgets);
       expect(confirm().onPressed, isNull);
-      await tester.pump(const Duration(milliseconds: 650));
-      expect(find.text('Ally 2 uses Move 3'), findsOneWidget);
-      for (var i = 0; i < 4; i++) {
-        await tester.pump(const Duration(milliseconds: 650));
+      for (var i = 0; i < 20; i++) {
+        await tester.pump(const Duration(milliseconds: 200));
       }
       await tester.pumpAndSettle();
-      expect(find.text('ROUND 2'), findsOneWidget);
-      expect(find.byKey(const ValueKey('ally-hexagon-0')), findsOneWidget);
-      expect(confirm().onPressed, isNull);
-      await tester.tap(find.byKey(const ValueKey('leave-battle')));
-      await tester.pumpAndSettle();
+      expect(find.byType(BattlePage), findsOneWidget);
+      expect(find.byKey(const ValueKey('leave-battle')), findsNothing);
+      final hpBars = tester.widgetList<PixelResourceBar>(
+        find.byType(PixelResourceBar),
+      );
+      expect(hpBars.any((bar) => bar.value < bar.maximum), isTrue);
+      for (var round = 2; round <= 3; round++) {
+        expect(confirm().onPressed, isNull);
+        await tester.tap(option(0, 2));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const ValueKey('confirm-move')));
+        await tester.pumpAndSettle();
+        await tester.tap(option(1, 0));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const ValueKey('confirm-move')));
+        await tester.pump();
+        for (var i = 0; i < 20; i++) {
+          await tester.pump(const Duration(milliseconds: 200));
+        }
+        await tester.pumpAndSettle();
+        if (round == 2) expect(find.byType(BattlePage), findsOneWidget);
+      }
       expect(find.byType(BattlePage), findsNothing);
       await tester.tap(find.byKey(const ValueKey('move-up')));
       await tester.pumpAndSettle();
