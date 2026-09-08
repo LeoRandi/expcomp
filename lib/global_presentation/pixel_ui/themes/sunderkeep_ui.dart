@@ -10,7 +10,7 @@ abstract final class SunderedKeepAssets {
   static const monsterDirectory = 'assets/monsters';
 }
 
-/// The first curated visual skin for the pixel UI foundation.
+/// Basic style for grasslands, plains, hills and such.
 abstract final class SunderedKeepUi {
   static final atlas = PixelAtlasDefinition(
     assetPath: SunderedKeepAssets.tileAtlas,

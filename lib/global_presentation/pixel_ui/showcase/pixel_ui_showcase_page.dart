@@ -14,7 +14,7 @@ import '../primitives/pixel_item_tile.dart';
 import '../primitives/pixel_resource_bar.dart';
 import '../primitives/pixel_tabs.dart';
 import '../primitives/pixel_text_plate.dart';
-import '../themes/sundered_keep_ui.dart';
+import '../themes/sunderkeep_ui.dart';
 import 'pixel_ui_showcase_skins.dart';
 
 class PixelUiShowcasePage extends StatefulWidget {

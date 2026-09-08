@@ -3,7 +3,7 @@ description: "A new Flutter project."
 
 publish_to: 'none'
  
-version: 0.0.1
+version: 0.0.2
 
 environment:
   sdk: ^3.9.2
@@ -23,6 +23,7 @@ flutter:
   uses-material-design: true
 
   assets:
+    - assets/pixel_ui/showcase/sheets_16grid/07_overworld_mixto/16x16_Block_Texture_Set/blocks__granite.png.png
     - assets/sundered_keep/tiles/
     - assets/sundered_keep/icons/
     - assets/pixel_ui/showcase/

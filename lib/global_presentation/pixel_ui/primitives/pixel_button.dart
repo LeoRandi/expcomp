@@ -22,6 +22,7 @@ class PixelButton extends StatefulWidget {
     this.semanticLabel,
     this.atlas,
     this.recipe,
+    this.expandToFill = false,
   }) : assert(columns >= 2),
        assert(rows >= 2);
 
@@ -36,6 +37,9 @@ class PixelButton extends StatefulWidget {
   final String? semanticLabel;
   final PixelAtlasDefinition? atlas;
   final PixelPanelRecipe? recipe;
+
+  /// Tile the frame across the space supplied by the parent.
+  final bool expandToFill;
 
   bool get enabled => onPressed != null;
 
@@ -97,7 +101,9 @@ class _PixelButtonState extends State<PixelButton> {
           onTapUp: widget.enabled ? (_) => _setPressed(false) : null,
           onTapCancel: widget.enabled ? () => _setPressed(false) : null,
           child: PixelPanel(
-            gridSize: PixelGridSize(columns: widget.columns, rows: widget.rows),
+            gridSize: widget.expandToFill
+                ? null
+                : PixelGridSize(columns: widget.columns, rows: widget.rows),
             role: PixelSurfaceRole.button,
             atlas: widget.atlas,
             recipe: widget.recipe,

@@ -1,14 +1,28 @@
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../global_presentation/pixel_ui/pixel_ui.dart';
+import '../battle/battle_page.dart';
+import '../party/party_menu.dart';
 
 const _gold = Color(0xFFAA8C59);
 const _sprite =
     'assets/monsters/dark_fantasy_creatures_cc0/'
     'raw_originals/03_stylized_fantasy/Ranger_64x64/ranger_t.png';
+final _groundAtlas = PixelAtlasDefinition(
+  assetPath:
+      'assets/pixel_ui/showcase/sheets_16grid/07_overworld_mixto/'
+      '16x16_Block_Texture_Set/blocks__granite.png.png',
+);
+final _npcAtlas = PixelAtlasDefinition(
+  assetPath:
+      'assets/monsters/dark_fantasy_creatures_cc0/'
+      'raw_originals/03_stylized_fantasy/Wizard/wizard_walking_0.png',
+  sourceTileExtent: 48,
+);
 
 class ExplorationPage extends StatefulWidget {
   const ExplorationPage({super.key});
@@ -19,10 +33,14 @@ class ExplorationPage extends StatefulWidget {
 
 class _ExplorationPageState extends State<ExplorationPage> {
   static const cells = 20;
-  static const visibleCells = 10.5;
+  static const visibleCells = 8.4;
+  static const npcColumn = cells ~/ 2;
+  static const npcRow = cells ~/ 2 - 1;
   int _column = cells ~/ 2;
   int _row = cells ~/ 2;
   bool _faceLeft = false;
+  bool _dialogueOpen = false;
+  bool _partyOpen = false;
   final _focus = FocusNode();
 
   @override
@@ -32,10 +50,17 @@ class _ExplorationPageState extends State<ExplorationPage> {
   }
 
   void _move(int dx, int dy) {
+    if (_dialogueOpen || _partyOpen) return;
     _focus.requestFocus();
+    final nextColumn = (_column + dx).clamp(0, cells - 1);
+    final nextRow = (_row + dy).clamp(0, cells - 1);
+    if (nextColumn == npcColumn && nextRow == npcRow) {
+      _showNpcDialogue();
+      return;
+    }
     setState(() {
-      _column = (_column + dx).clamp(0, cells - 1);
-      _row = (_row + dy).clamp(0, cells - 1);
+      _column = nextColumn;
+      _row = nextRow;
       if (dx != 0) _faceLeft = dx < 0;
     });
   }
@@ -55,26 +80,164 @@ class _ExplorationPageState extends State<ExplorationPage> {
     return KeyEventResult.handled;
   }
 
+  Future<void> _showNpcDialogue() async {
+    if (_dialogueOpen) return;
+    _dialogueOpen = true;
+    try {
+      final startBattle = await showDialog<bool>(
+        context: context,
+        builder: (context) => Dialog(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          alignment: Alignment.bottomCenter,
+          insetPadding: const EdgeInsets.all(20),
+          child: SingleChildScrollView(
+            child: SizedBox(
+              width: 480,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.only(left: 24, bottom: 8),
+                    child: PixelAssetSprite(
+                      key: ValueKey('npc-portrait'),
+                      assetPath:
+                          'assets/monsters/dark_fantasy_creatures_cc0/'
+                          'raw_originals/03_stylized_fantasy/Wizard/wizard_8.png',
+                      width: 96,
+                      height: 96,
+                      semanticLabel: 'Cresca villager portrait',
+                    ),
+                  ),
+                  SizedBox(
+                    height: 230,
+                    child: PixelPanel.expanded(
+                      role: PixelSurfaceRole.dialog,
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Expanded(
+                            child: Text(
+                              'Ready to meet your end?',
+                              style: TextStyle(
+                                color: Color(0xFFE5DAC5),
+                                fontFamily: 'monospace',
+                                fontSize: 18,
+                                height: 1.4,
+                              ),
+                            ),
+                          ),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              PixelButton(
+                                key: const ValueKey('start-battle'),
+                                label: 'Yes',
+                                columns: 5,
+                                onPressed: () => Navigator.pop(context, true),
+                              ),
+                              const SizedBox(width: 12),
+                              PixelButton(
+                                key: const ValueKey('close-npc-dialogue'),
+                                label: 'No',
+                                columns: 5,
+                                onPressed: () => Navigator.pop(context, false),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+      if (startBattle == true && mounted) {
+        await Navigator.of(
+          context,
+        ).push<void>(MaterialPageRoute(builder: (_) => const BattlePage()));
+      }
+    } finally {
+      _dialogueOpen = false;
+      if (mounted) _focus.requestFocus();
+    }
+  }
+
   void _showPlayer() {
     showDialog<void>(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF252329),
-        title: const Text('Youngest of Cresca', style: TextStyle(color: _gold)),
-        content: const Text(
-          'Your journey begins here.\nPlayer details are coming soon.',
-          style: TextStyle(color: Color(0xFFE5DAC5)),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        child: SizedBox(
+          width: 360,
+          height: 240,
+          child: PixelPanel.expanded(
+            role: PixelSurfaceRole.dialog,
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Youngest of Cresca',
+                  style: TextStyle(
+                    color: _gold,
+                    fontFamily: 'monospace',
+                    fontSize: 18,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Expanded(
+                  child: Text(
+                    'Your journey begins here.\nPlayer details are coming soon.',
+                    style: TextStyle(
+                      color: Color(0xFFE5DAC5),
+                      fontFamily: 'monospace',
+                    ),
+                  ),
+                ),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: PixelButton(
+                    key: const ValueKey('close-player-info'),
+                    label: 'Close',
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ),
+              ],
+            ),
           ),
-        ],
+        ),
       ),
     ).then((_) {
       if (mounted) _focus.requestFocus();
     });
+  }
+
+  Future<void> _showParty() async {
+    if (_partyOpen) return;
+    _partyOpen = true;
+    try {
+      await showGeneralDialog<void>(
+        context: context,
+        barrierColor: Colors.transparent,
+        transitionDuration: const Duration(milliseconds: 180),
+        pageBuilder: (context, _, _) => SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.only(top: 88),
+            child: PartyMenu(onClose: () => Navigator.pop(context)),
+          ),
+        ),
+      );
+    } finally {
+      _partyOpen = false;
+      if (mounted) _focus.requestFocus();
+    }
   }
 
   @override
@@ -117,31 +280,57 @@ class _ExplorationPageState extends State<ExplorationPage> {
                             horizontal: 20,
                             vertical: 10,
                           ),
-                          child: Align(
-                            alignment: Alignment.centerLeft,
-                            child: SizedBox(
-                              width: 60,
-                              height: 66,
-                              child: Material(
-                                color: const Color(0xFF242026),
-                                shape: const _HexagonBorder(),
-                                clipBehavior: Clip.antiAlias,
-                                child: InkWell(
-                                  onTap: _showPlayer,
-                                  child: Semantics(
-                                    button: true,
-                                    label: 'Player information',
-                                    child: const Center(
-                                      child: Icon(
-                                        Icons.close,
-                                        color: Color(0xFFC35C55),
-                                        size: 34,
+                          child: Row(
+                            children: [
+                              SizedBox(
+                                width: 60,
+                                height: 66,
+                                child: Material(
+                                  color: const Color(0xFF242026),
+                                  shape: const _HexagonBorder(),
+                                  clipBehavior: Clip.antiAlias,
+                                  child: InkWell(
+                                    onTap: _showPlayer,
+                                    child: Semantics(
+                                      button: true,
+                                      label: 'Player information',
+                                      child: const Center(
+                                        child: Icon(
+                                          Icons.close,
+                                          color: Color(0xFFC35C55),
+                                          size: 34,
+                                        ),
                                       ),
                                     ),
                                   ),
                                 ),
                               ),
-                            ),
+                              const SizedBox(width: 16),
+                              SizedBox(
+                                width: 56,
+                                height: 56,
+                                child: Material(
+                                  color: const Color(0xFF242026),
+                                  shape: const _HexagonBorder(),
+                                  clipBehavior: Clip.antiAlias,
+                                  child: InkWell(
+                                    key: const ValueKey('open-party'),
+                                    onTap: _showParty,
+                                    child: Semantics(
+                                      label: 'Party',
+                                      button: true,
+                                      child: Center(
+                                        child: Icon(
+                                          Icons.pets,
+                                          color: _gold,
+                                          size: 32,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
@@ -218,9 +407,31 @@ class _ExplorationPageState extends State<ExplorationPage> {
               top: playerTop - _row * tile,
               width: cells * tile,
               height: cells * tile,
-              child: CustomPaint(
-                key: const ValueKey('world-grid'),
-                painter: _FloorPainter(cells, _column, _row),
+              child: PixelAtlasBuilder(
+                atlas: _groundAtlas,
+                builder: (context, image, error) => CustomPaint(
+                  key: const ValueKey('world-grid'),
+                  painter: _GroundPainter(cells, image),
+                  foregroundPainter: _FloorPainter(cells, _column, _row),
+                  child: Stack(
+                    children: [
+                      Positioned(
+                        left: npcColumn * tile,
+                        top: npcRow * tile,
+                        width: tile,
+                        height: tile,
+                        child: PixelSprite(
+                          key: const ValueKey('npc'),
+                          atlas: _npcAtlas,
+                          region: const PixelAtlasRegion(column: 0, row: 0),
+                          width: tile,
+                          height: tile,
+                          semanticLabel: 'Cresca villager',
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
             Positioned(
@@ -291,6 +502,60 @@ class _ExplorationPageState extends State<ExplorationPage> {
   }
 }
 
+class _GroundPainter extends CustomPainter {
+  const _GroundPainter(this.cells, this.image);
+  final int cells;
+  final ui.Image? image;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final texture = image;
+    if (texture == null) {
+      canvas.drawRect(
+        Offset.zero & size,
+        Paint()..color = const Color(0xFF34363B),
+      );
+      return;
+    }
+    // Each logical movement cell contains four 16x16 art tiles.
+    final artTile = size.width / cells / 2;
+    final paint = Paint()
+      ..filterQuality = FilterQuality.none
+      ..isAntiAlias = false;
+    for (var y = 0; y < cells * 2; y++) {
+      for (var x = 0; x < cells * 2; x++) {
+        canvas.drawImageRect(
+          texture,
+          const Rect.fromLTWH(0, 0, 16, 16),
+          Rect.fromLTWH(x * artTile, y * artTile, artTile, artTile),
+          paint,
+        );
+      }
+    }
+    final movementTile = artTile * 2;
+    paint.color = Colors.black.withValues(alpha: .2);
+    for (var y = 0; y < cells; y++) {
+      for (var x = 0; x < cells; x++) {
+        if ((x + y).isEven) {
+          canvas.drawRect(
+            Rect.fromLTWH(
+              x * movementTile,
+              y * movementTile,
+              movementTile,
+              movementTile,
+            ),
+            paint,
+          );
+        }
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(_GroundPainter oldDelegate) =>
+      cells != oldDelegate.cells || image != oldDelegate.image;
+}
+
 class _FloorPainter extends CustomPainter {
   const _FloorPainter(this.cells, this.playerColumn, this.playerRow);
   final int cells;
@@ -303,34 +568,16 @@ class _FloorPainter extends CustomPainter {
     final paint = Paint();
     for (var y = 0; y < cells; y++) {
       for (var x = 0; x < cells; x++) {
-        final rect = Rect.fromLTWH(x * tile, y * tile, tile, tile).deflate(1);
-        paint.color = (x + y) % 2 == 0
-            ? const Color(0xFF34363B)
-            : const Color(0xFF2C2E33);
-        canvas.drawRect(rect, paint);
-        paint.color = const Color(0xFF45464A);
-        canvas.drawLine(rect.topLeft, rect.topRight, paint);
-        canvas.drawLine(rect.topLeft, rect.bottomLeft, paint);
-        if ((x * 3 + y) % 5 == 0) {
-          paint.color = const Color(0xFF222429);
-          final crack = Path()
-            ..moveTo(rect.left + tile * .6, rect.top)
-            ..lineTo(rect.left + tile * .5, rect.top + tile * .18)
-            ..lineTo(rect.left + tile * .65, rect.top + tile * .28);
-          paint.style = PaintingStyle.stroke;
-          canvas.drawPath(crack, paint);
-          paint.style = PaintingStyle.fill;
-        }
         // Square rings: diagonal neighbors count as one tile away, too.
         final distance = math.max(
           (x - playerColumn).abs(),
           (y - playerRow).abs(),
         );
         final darkness = switch (distance) {
-          < 5 => 0.0,
-          5 => 0.5,
-          6 => 0.75,
-          7 => 0.9,
+          < 4 => 0.0,
+          4 => 0.5,
+          5 => 0.75,
+          6 => 0.9,
           _ => 1.0,
         };
         if (darkness > 0) {

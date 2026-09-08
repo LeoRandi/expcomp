@@ -16,6 +16,8 @@ class MyApp extends StatelessWidget {
       title: 'EXPCOMP',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
+        fontFamily: 'monospace',
+        // Sunderkeep is the shared menu skin; creature cards override it by source.
         extensions: <ThemeExtension<dynamic>>[SunderedKeepUi.theme],
       ),
       home: const ExplorationPage(),
