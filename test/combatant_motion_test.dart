@@ -19,11 +19,7 @@ void main() {
       of: find.byKey(ValueKey('ally-hexagon-$ally')),
       matching: find.byKey(ValueKey('move-option-$move')),
     );
-    await tester.tap(option(0, 1)); // PSYCLASH hits unguarded enemy 2.
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const ValueKey('confirm-move')));
-    await tester.pumpAndSettle();
-    await tester.tap(option(1, 2));
+    await tester.tap(option(0, 0)); // PSYCLASH hits unguarded enemy 2.
     await tester.pumpAndSettle();
     final attacker = find.byKey(const ValueKey('ally-0'));
     final target = find.byKey(const ValueKey('enemy-1'));
@@ -31,7 +27,7 @@ void main() {
     final targetStart = tester.getCenter(target);
     await tester.tap(find.byKey(const ValueKey('confirm-move')));
     await tester.pump();
-    // Enemy 1's priority +2 ward completes before Briar's priority 0 action.
+    // Enemy 1's priority +2 ward completes before Pip's priority 0 action.
     await tester.pump(const Duration(milliseconds: 200));
     await tester.pump(const Duration(milliseconds: 600));
     await tester.pump(const Duration(milliseconds: 50));

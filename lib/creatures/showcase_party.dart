@@ -35,21 +35,29 @@ const emberBeetle = CreatureSpecies(
     spe: 7,
   ),
 );
+const tinyBot = CreatureSpecies(
+  id: 'tiny_bot',
+  name: 'Tiny Bot',
+  frontAsset: '${_root}2_Front_Alternative_Color_Palette_f0_c0_00248.png',
+  backAsset: '${_root}2_Back_Alternative_Color_Palette_f0_c0_00247.png',
+  baseStats: CreatureStats(
+    con: 16,
+    pro: 5,
+    mpr: 14,
+    res: 14,
+    mre: 15,
+    cri: 3,
+    eva: 3,
+    spe: 5,
+  ),
+);
 final showcaseParty = List<Creature>.unmodifiable([
   Creature(
-    id: 'companion_01',
-    source: CreatureSource.raida,
-    name: 'Briar',
-    species: thornWisp,
-    stats: thornWisp.baseStats,
-    currentHp: 80,
-  ),
-  Creature(
-    id: 'companion_02',
-    source: CreatureSource.undiria,
-    name: 'Cinder',
-    species: emberBeetle,
-    stats: emberBeetle.baseStats,
-    currentHp: 120,
+    id: 'tiny_bot_01',
+    source: CreatureSource.koredull,
+    name: 'Pip',
+    species: tinyBot,
+    stats: tinyBot.baseStats,
+    currentHp: tinyBot.baseStats.maxHp,
   ),
 ]);

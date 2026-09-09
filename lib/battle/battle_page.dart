@@ -17,11 +17,11 @@ class BattlePage extends StatefulWidget {
 class _BattlePageState extends State<BattlePage> {
   int _activeAlly = 0;
   int? _selection;
-  final List<int?> _commands = [null, null];
+  late final List<int?> _commands = List.filled(_allies.length, null);
   bool _resolving = false;
   int _round = 1;
   final _random = math.Random();
-  String _message = 'Choose a move for Briar';
+  late String _message = 'Choose a move for ${_allies.first.name}';
   int _actionPulse = 0;
   String? _actingId;
   Set<String> _hitIds = {};
@@ -35,16 +35,19 @@ class _BattlePageState extends State<BattlePage> {
   Future<void> _confirm() async {
     if (_selection == null || _resolving) return;
     _commands[_activeAlly] = _selection;
-    if (_activeAlly == 0 && _allies[1].alive) {
+    final nextAlly = _allies.indexWhere(
+      (c) => c.alive && _commands[_allies.indexOf(c)] == null,
+    );
+    if (nextAlly != -1) {
       setState(() {
-        _activeAlly = 1;
+        _activeAlly = nextAlly;
         _selection = null;
-        _message = 'Choose a move for ${_allies[1].name}';
+        _message = 'Choose a move for ${_allies[nextAlly].name}';
       });
       return;
     }
     final actions = orderActions([
-      for (var i = 0; i < 2; i++)
+      for (var i = 0; i < _allies.length; i++)
         if (_allies[i].alive && _commands[i] != null)
           BattleAction(_allies[i], _allies[i].moves[_commands[i]!]),
       for (final enemy in _enemies.where((c) => c.alive))
@@ -97,7 +100,7 @@ class _BattlePageState extends State<BattlePage> {
     setState(() {
       _round++;
       _activeAlly = _allies.indexWhere((c) => c.alive);
-      _commands.fillRange(0, 2, null);
+      _commands.fillRange(0, _commands.length, null);
       _resolving = false;
       _message = 'Choose a move for ${_allies[_activeAlly].name}';
     });
@@ -149,17 +152,21 @@ class _BattlePageState extends State<BattlePage> {
                       builder: (context, constraints) {
                         final extent = math.min(
                           constraints.maxHeight,
-                          math.min(constraints.maxWidth / 1.4, 340.0),
+                          math.min(
+                            constraints.maxWidth /
+                                (_allies.length == 1 ? 1 : 1.4),
+                            340.0,
+                          ),
                         );
                         return Center(
                           child: SizedBox(
-                            width: extent * 1.4,
+                            width: extent * (_allies.length == 1 ? 1 : 1.4),
                             height: extent,
                             child: Stack(
                               children: [
                                 // Paint the inactive ally first, behind the active ally.
                                 for (final ally in [
-                                  1 - _activeAlly,
+                                  if (_allies.length > 1) 1 - _activeAlly,
                                   _activeAlly,
                                 ])
                                   AnimatedPositioned(
@@ -247,7 +254,7 @@ class _BattlePageState extends State<BattlePage> {
     height: 40,
     child: Row(
       children: [
-        for (var i = 0; i < 2; i++)
+        for (var i = 0; i < (allies ? _allies : _enemies).length; i++)
           Expanded(
             child: Padding(
               padding: EdgeInsets.only(left: i == 1 ? 12 : 0),
@@ -274,7 +281,7 @@ class _BattlePageState extends State<BattlePage> {
       heightFactor: 1,
       child: Row(
         children: [
-          for (var i = 0; i < 2; i++)
+          for (var i = 0; i < (allies ? _allies : _enemies).length; i++)
             Expanded(
               child: Column(
                 children: [

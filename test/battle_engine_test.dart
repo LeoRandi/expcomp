@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:expcomp/battle/battle_engine.dart';
 import 'package:expcomp/battle/battle_move.dart';
 import 'package:expcomp/creatures/creature.dart';
+import 'package:expcomp/creatures/showcase_party.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 CreatureStats stats({int speed = 10, int res = 12, int mre = 8}) =>
@@ -103,7 +104,7 @@ void main() {
   test(
     'Defense drops round, persist through rounds, and affect later damage',
     () {
-      final roster = createShowcaseBattle();
+      final roster = fourCreatureFixture();
       final user = roster[0];
       final enemy = roster[2];
       final before = enemy.hp;
@@ -124,7 +125,7 @@ void main() {
   );
 
   test('Healing caps at maximum HP and does not revive defeated creatures', () {
-    final roster = createShowcaseBattle();
+    final roster = fourCreatureFixture();
     roster[0].hp = 60;
     roster[1].hp = 50;
     final results = resolveAction(BattleAction(roster[0], brancheal), roster);
@@ -139,7 +140,7 @@ void main() {
   test(
     'Flameward blocks damage and debuffs, reflects every hit, expires after round',
     () {
-      final roster = createShowcaseBattle();
+      final roster = fourCreatureFixture();
       final defender = roster[2];
       final attacker = roster[0];
       resolveAction(BattleAction(defender, flameward), roster);
@@ -164,7 +165,7 @@ void main() {
   test(
     'POWERIDE snapshots rounded reduction and gains only the amount available',
     () {
-      final roster = createShowcaseBattle();
+      final roster = fourCreatureFixture();
       final user = roster[3];
       user.prowess = 15;
       roster[0].prowess = 1;
@@ -187,7 +188,7 @@ void main() {
   test(
     'Reflection cannot recurse; a reflected knockout stops remaining targets',
     () {
-      final roster = createShowcaseBattle();
+      final roster = fourCreatureFixture();
       final user = roster[1];
       user.hp = 1;
       user.flameWardActive = true;
@@ -201,3 +202,17 @@ void main() {
     },
   );
 }
+
+List<BattleCreature> fourCreatureFixture() => [
+  for (final side in BattleSide.values)
+    for (var i = 0; i < 2; i++)
+      BattleCreature(
+        id: '${side == BattleSide.allies ? 'ally' : 'enemy'}-$i',
+        name: '${side.name}-$i',
+        side: side,
+        slot: i,
+        stats: [thornWisp, emberBeetle][i].baseStats,
+        moves: moveCatalog,
+        asset: '',
+      ),
+];

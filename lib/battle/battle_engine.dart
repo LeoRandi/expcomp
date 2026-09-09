@@ -57,7 +57,7 @@ class BattleResult {
 }
 
 List<BattleCreature> createShowcaseBattle() => [
-  for (var i = 0; i < 2; i++)
+  for (var i = 0; i < showcaseParty.length; i++)
     BattleCreature(
       id: 'ally-$i',
       name: showcaseParty[i].name,
@@ -66,9 +66,7 @@ List<BattleCreature> createShowcaseBattle() => [
       stats: showcaseParty[i].stats,
       currentHp: showcaseParty[i].currentHp,
       asset: showcaseParty[i].species.backAsset,
-      moves: i == 0
-          ? [psybite, psyclash, brancheal]
-          : [piercecrash, headrip, wavelectrify],
+      moves: [psyclash, wavelectrify, flameward],
     ),
   for (var i = 0; i < 2; i++)
     BattleCreature(
@@ -76,8 +74,8 @@ List<BattleCreature> createShowcaseBattle() => [
       name: 'Enemy ${i + 1}',
       side: BattleSide.enemies,
       slot: i,
-      stats: showcaseParty[i].species.baseStats,
-      asset: showcaseParty[i].species.frontAsset,
+      stats: [thornWisp, emberBeetle][i].baseStats,
+      asset: [thornWisp, emberBeetle][i].frontAsset,
       moves: i == 0
           ? [flameward, psyclash, psybite]
           : [poweride, headrip, wavelectrify],

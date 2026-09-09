@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import '../global_presentation/pixel_ui/pixel_ui.dart';
 import '../battle/battle_page.dart';
 import '../party/party_menu.dart';
+import 'cresca_map.dart';
 
 const _gold = Color(0xFFAA8C59);
 const _sprite =
@@ -54,6 +55,7 @@ class _ExplorationPageState extends State<ExplorationPage> {
     _focus.requestFocus();
     final nextColumn = (_column + dx).clamp(0, cells - 1);
     final nextRow = (_row + dy).clamp(0, cells - 1);
+    if (isHouseTile(nextColumn, nextRow)) return;
     if (nextColumn == npcColumn && nextRow == npcRow) {
       _showNpcDialogue();
       return;
@@ -415,6 +417,13 @@ class _ExplorationPageState extends State<ExplorationPage> {
                   foregroundPainter: _FloorPainter(cells, _column, _row),
                   child: Stack(
                     children: [
+                      Positioned.fill(
+                        child: PixelAtlasBuilder(
+                          atlas: SunderedKeepUi.theme.atlas,
+                          builder: (context, image, error) =>
+                              CustomPaint(painter: _VillagePainter(image)),
+                        ),
+                      ),
                       Positioned(
                         left: npcColumn * tile,
                         top: npcRow * tile,
@@ -554,6 +563,96 @@ class _GroundPainter extends CustomPainter {
   @override
   bool shouldRepaint(_GroundPainter oldDelegate) =>
       cells != oldDelegate.cells || image != oldDelegate.image;
+}
+
+class _VillagePainter extends CustomPainter {
+  const _VillagePainter(this.image);
+  final ui.Image? image;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final atlas = image;
+    if (atlas == null) return;
+    final tile = size.width / 20;
+    final artTile = tile / 2;
+    final paint = Paint()..filterQuality = FilterQuality.none;
+    void stamp(int sx, int sy, double x, double y, {int height = 1}) {
+      canvas.drawImageRect(
+        atlas,
+        Rect.fromLTWH(sx * 16, sy * 16, 16, height * 16),
+        Rect.fromLTWH(x, y, artTile, artTile * height),
+        paint,
+      );
+    }
+
+    for (var y = 0; y < 20; y++) {
+      for (var x = 0; x < 20; x++) {
+        if (!isRoadTile(x, y)) continue;
+        for (var dy = 0; dy < 2; dy++) {
+          for (var dx = 0; dx < 2; dx++) {
+            stamp(
+              4 + (x + dx) % 2,
+              1,
+              x * tile + dx * artTile,
+              y * tile + dy * artTile,
+            );
+          }
+        }
+        if ((x + y).isEven) {
+          canvas.drawRect(
+            Rect.fromLTWH(x * tile, y * tile, tile, tile),
+            Paint()..color = Colors.black.withValues(alpha: .2),
+          );
+        }
+      }
+    }
+    for (final house in crescaHouses) {
+      final left = house.left * tile;
+      final top = house.top * tile;
+      // Six by six art tiles form each cottage; three rows of roof above
+      // brick walls, inset windows and a closed two-tile wooden door.
+      for (var y = 3; y < 6; y++) {
+        for (var x = 0; x < 6; x++) {
+          stamp(1, 1, left + x * artTile, top + y * artTile);
+        }
+      }
+      // The atlas's diagonal timbers form continuous gable edges. Fill the
+      // roof with darkened brick tiles, clipped to the same triangular outline.
+      canvas.save();
+      canvas.clipPath(
+        Path()
+          ..moveTo(left, top + 3 * artTile)
+          ..lineTo(left + 3 * artTile, top)
+          ..lineTo(left + 6 * artTile, top + 3 * artTile)
+          ..close(),
+      );
+      paint.colorFilter = const ColorFilter.mode(
+        Color(0xFF70545C),
+        BlendMode.modulate,
+      );
+      for (var y = 0; y < 3; y++) {
+        for (var x = 0; x < 6; x++) {
+          stamp(1, 1, left + x * artTile, top + y * artTile);
+        }
+      }
+      paint.colorFilter = null;
+      canvas.restore();
+      for (var y = 0; y < 3; y++) {
+        stamp(3, 5, left + (2 - y) * artTile, top + y * artTile);
+        canvas.save();
+        canvas.translate(left + (4 + y) * artTile, top + y * artTile);
+        canvas.scale(-1, 1);
+        stamp(3, 5, 0, 0);
+        canvas.restore();
+      }
+      stamp(0, 7, left + artTile, top + 3 * artTile);
+      stamp(0, 7, left + 4 * artTile, top + 3 * artTile);
+      stamp(2, 9, left + 2 * artTile, top + 4 * artTile, height: 2);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_VillagePainter oldDelegate) => image != oldDelegate.image;
 }
 
 class _FloorPainter extends CustomPainter {

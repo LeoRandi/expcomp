@@ -8,7 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   testWidgets(
-    'Party shows two companions, four empty slots and blocks world input',
+    'Party shows one companion, five empty slots and blocks world input',
     (tester) async {
       tester.view.physicalSize = const Size(390, 844);
       tester.view.devicePixelRatio = 1;
@@ -20,27 +20,24 @@ void main() {
       final before = tester.getTopLeft(world);
       await tester.tap(find.byKey(const ValueKey('open-party')));
       await tester.pumpAndSettle();
-      expect(find.text('Briar'), findsOneWidget);
-      expect(find.text('Cinder'), findsOneWidget);
+      expect(find.text('Pip'), findsOneWidget);
+      expect(find.text('Cinder'), findsNothing);
       expect(find.text('RAIDA'), findsNothing);
       expect(find.text('UNDIRIA'), findsNothing);
-      for (final entry in {
-        'companion_01': CreatureSource.raida,
-        'companion_02': CreatureSource.undiria,
-      }.entries) {
+      for (final entry in {'tiny_bot_01': CreatureSource.koredull}.entries) {
         final card = tester.element(find.byKey(ValueKey('party-${entry.key}')));
         expect(
           PixelUiThemeData.of(card).atlas,
           themeForSource(entry.value).atlas,
         );
       }
-      for (var i = 2; i < 6; i++) {
+      for (var i = 1; i < 6; i++) {
         expect(find.byKey(ValueKey('empty-party-slot-$i')), findsOneWidget);
       }
       expect(
         tester
             .widget<PixelButton>(
-              find.byKey(const ValueKey('details-companion_01')),
+              find.byKey(const ValueKey('details-tiny_bot_01')),
             )
             .onPressed,
         isNull,

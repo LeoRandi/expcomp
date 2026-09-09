@@ -6,7 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   for (final size in [const Size(390, 844), const Size(800, 600)]) {
-    testWidgets('NPC starts battle and two commands resolve a round at $size', (
+    testWidgets('NPC starts battle and one command resolve a round at $size', (
       tester,
     ) async {
       tester.view.physicalSize = size;
@@ -21,7 +21,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(BattlePage), findsOneWidget);
       expect(find.byKey(const ValueKey('npc-portrait')), findsNothing);
-      for (final key in ['enemy-0', 'enemy-1', 'ally-0', 'ally-1']) {
+      for (final key in ['enemy-0', 'enemy-1', 'ally-0']) {
         expect(find.byKey(ValueKey(key)), findsOneWidget);
       }
       PixelButton confirm() => tester.widget<PixelButton>(
@@ -29,12 +29,7 @@ void main() {
       );
       expect(confirm().onPressed, isNull);
       expect(find.byKey(const ValueKey('ally-hexagon-0')), findsOneWidget);
-      expect(find.byKey(const ValueKey('ally-hexagon-1')), findsOneWidget);
-      Rect hexagon(int ally) =>
-          tester.getRect(find.byKey(ValueKey('ally-hexagon-$ally')));
-      expect(hexagon(0).width, greaterThan(hexagon(1).width));
-      expect(hexagon(0).overlaps(hexagon(1)), isTrue);
-      expect(hexagon(1).right, greaterThan(hexagon(0).right));
+      expect(find.byKey(const ValueKey('ally-hexagon-1')), findsNothing);
       final button = find.byKey(const ValueKey('confirm-move'));
       final panel = tester.widget<PixelPanel>(
         find.descendant(of: button, matching: find.byType(PixelPanel)),
@@ -46,7 +41,7 @@ void main() {
         matching: find.byKey(ValueKey('move-option-$move')),
       );
       void expectLabelsInsideSectors() {
-        for (var ally = 0; ally < 2; ally++) {
+        for (var ally = 0; ally < 1; ally++) {
           for (var move = 0; move < 3; move++) {
             final label = option(ally, move);
             final clip = find
@@ -76,23 +71,9 @@ void main() {
       }
 
       expectLabelsInsideSectors();
-      // The exposed inactive half must not select a command.
-      await tester.tapAt(Offset(hexagon(1).right - 12, hexagon(1).center.dy));
-      await tester.pumpAndSettle();
-      expect(confirm().onPressed, isNull);
       await tester.tap(option(0, 0));
       await tester.pumpAndSettle();
       expect(confirm().onPressed, isNotNull);
-      await tester.tap(find.byKey(const ValueKey('confirm-move')));
-      await tester.pumpAndSettle();
-      expect(find.byKey(const ValueKey('ally-hexagon-1')), findsOneWidget);
-      expect(hexagon(1).width, greaterThan(hexagon(0).width));
-      expect(hexagon(0).overlaps(hexagon(1)), isTrue);
-      expect(hexagon(0).left, lessThan(hexagon(1).left));
-      expectLabelsInsideSectors();
-      expect(confirm().onPressed, isNull);
-      await tester.tap(option(1, 2));
-      await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('confirm-move')));
       await tester.pump();
       expect(find.textContaining('FLAMEWARD'), findsWidgets);
@@ -110,10 +91,6 @@ void main() {
       for (var round = 2; round <= 3; round++) {
         expect(confirm().onPressed, isNull);
         await tester.tap(option(0, 2));
-        await tester.pumpAndSettle();
-        await tester.tap(find.byKey(const ValueKey('confirm-move')));
-        await tester.pumpAndSettle();
-        await tester.tap(option(1, 0));
         await tester.pumpAndSettle();
         await tester.tap(find.byKey(const ValueKey('confirm-move')));
         await tester.pump();
