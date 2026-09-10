@@ -3,6 +3,7 @@ import '../creatures/creature.dart';
 import '../creatures/showcase_party.dart';
 import 'battle_move.dart';
 import 'turn_order.dart';
+import '../creatures/innate_ability.dart';
 
 enum BattleSide { allies, enemies }
 
@@ -16,11 +17,18 @@ class BattleCreature {
     required this.moves,
     required this.asset,
     int? currentHp,
+    this.level = 1,
+    this.innate,
   }) : hp = currentHp ?? stats.maxHp,
        prowess = stats.pro.toDouble(),
        magicalProwess = stats.mpr.toDouble(),
        resistance = stats.res.toDouble(),
        magicalResistance = stats.mre.toDouble();
+  final int level;
+  final InnateAbility? innate;
+  bool entered = false;
+  String? lastUsedMove;
+  List<BattleMove> offeredMoves = [];
   final String id;
   final String name;
   final BattleSide side;
@@ -66,7 +74,9 @@ List<BattleCreature> createShowcaseBattle() => [
       stats: showcaseParty[i].stats,
       currentHp: showcaseParty[i].currentHp,
       asset: showcaseParty[i].species.backAsset,
-      moves: [psyclash, wavelectrify, flameward],
+      moves: showcaseParty[i].equippedMoves.whereType<BattleMove>().toList(),
+      level: showcaseParty[i].level,
+      innate: showcaseParty[i].species.innate,
     ),
   for (var i = 0; i < 2; i++)
     BattleCreature(
@@ -76,9 +86,8 @@ List<BattleCreature> createShowcaseBattle() => [
       slot: i,
       stats: [thornWisp, emberBeetle][i].baseStats,
       asset: [thornWisp, emberBeetle][i].frontAsset,
-      moves: i == 0
-          ? [flameward, psyclash, psybite]
-          : [poweride, headrip, wavelectrify],
+      moves: [thornWisp, emberBeetle][i].moves,
+      innate: [thornWisp, emberBeetle][i].innate,
     ),
 ];
 
@@ -147,6 +156,7 @@ List<BattleResult> resolveAction(
   final user = action.user;
   if (!user.alive) return [];
   final move = action.move;
+  user.lastUsedMove = move.id;
   final results = <BattleResult>[];
   // Snapshot before transfers: every target loses the same requested amount.
   final transferAmount = (user.prowess * .1).roundToDouble();
@@ -154,6 +164,26 @@ List<BattleResult> resolveAction(
   for (final target in targetsFor(action, roster)) {
     if (!user.alive) break;
     final harmful = move.dealsDamage || move.effect == MoveEffect.powerTransfer;
+    final areaAttack =
+        move.target == MoveTarget.bothEnemies ||
+        move.target == MoveTarget.allOthers;
+    final guarded =
+        harmful &&
+        areaAttack &&
+        target.side != user.side &&
+        roster.any(
+          (c) =>
+              c.alive &&
+              c != target &&
+              c.side == target.side &&
+              c.innate?.effect == InnateEffect.allyAreaGuard,
+        );
+    if (guarded) {
+      results.add(
+        BattleResult(target, 0, note: 'Protected by Sheltering Boughs'),
+      );
+      continue;
+    }
     if (harmful && target.flameWardActive) {
       results.add(BattleResult(target, 0, note: 'Blocked'));
       final reflected = min(
@@ -225,11 +255,56 @@ List<BattleResult> resolveAction(
       BattleResult(user, 0, note: 'PRO +${totalTransferred.toInt()}'),
     );
   }
+  if (user.alive && user.innate?.effect == InnateEffect.regeneration) {
+    final healing = min(
+      user.stats.maxHp - user.hp,
+      (user.stats.maxHp * .05).round(),
+    );
+    user.hp += healing;
+    if (healing > 0) {
+      results.add(BattleResult(user, 0, healing: healing, note: 'Self Repair'));
+    }
+  }
   return results;
 }
 
 void endRound(List<BattleCreature> roster) {
   for (final creature in roster) {
     creature.flameWardActive = false;
+  }
+}
+
+/// Entry hooks run once per combatant, in roster order; reductions round.
+void enterCombat(List<BattleCreature> roster) {
+  for (final creature in roster.where((c) => c.alive && !c.entered)) {
+    creature.entered = true;
+    if (creature.innate?.effect == InnateEffect.entranceProwessDrop) {
+      for (final enemy in roster.where(
+        (c) => c.alive && c.side != creature.side,
+      )) {
+        enemy.prowess -= (enemy.prowess * .25).round();
+      }
+    }
+  }
+}
+
+const waitMove = BattleMove(
+  id: 'wait',
+  name: 'WAIT',
+  split: MoveSplit.blessing,
+  target: MoveTarget.self,
+  effectDescription: 'Pass this action.',
+);
+
+void dealRoundMoves(List<BattleCreature> roster, Random random) {
+  for (final creature in roster) {
+    final choices = {
+      for (final move in creature.moves)
+        if (move.id != creature.lastUsedMove) move.id: move,
+    }.values.toList()..shuffle(random);
+    creature.offeredMoves = choices.take(3).toList();
+    if (creature.offeredMoves.isEmpty) creature.offeredMoves = [waitMove];
+    // Only an actually executed action is excluded from the following round.
+    creature.lastUsedMove = null;
   }
 }

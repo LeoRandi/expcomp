@@ -1,3 +1,6 @@
+import 'package:expcomp/battle/battle_engine.dart';
+import 'package:expcomp/battle/battle_move.dart';
+import 'package:expcomp/creatures/showcase_party.dart';
 import 'package:expcomp/battle/battle_page.dart';
 import 'package:expcomp/battle/combatant_motion.dart';
 import 'package:expcomp/global_presentation/pixel_ui/pixel_ui.dart';
@@ -11,7 +14,37 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: ThemeData(extensions: [SunderedKeepUi.theme]),
-        home: const BattlePage(),
+        home: BattlePage(
+          roster: [
+            BattleCreature(
+              id: 'ally-0',
+              name: 'Pip',
+              side: BattleSide.allies,
+              slot: 0,
+              stats: tinyBot.baseStats,
+              moves: [psyclash],
+              asset: tinyBot.backAsset,
+            ),
+            BattleCreature(
+              id: 'enemy-0',
+              name: 'Wisp',
+              side: BattleSide.enemies,
+              slot: 0,
+              stats: thornWisp.baseStats,
+              moves: [flameward],
+              asset: thornWisp.frontAsset,
+            ),
+            BattleCreature(
+              id: 'enemy-1',
+              name: 'Beetle',
+              side: BattleSide.enemies,
+              slot: 1,
+              stats: emberBeetle.baseStats,
+              moves: [poweride],
+              asset: emberBeetle.frontAsset,
+            ),
+          ],
+        ),
       ),
     );
     await tester.pumpAndSettle();

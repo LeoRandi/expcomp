@@ -36,6 +36,12 @@ abstract final class UndiriaUi {
     solidFillColor: const Color(0xFF21191C),
   );
 
+  static final mediumPanel = PixelPanelRecipe.ninePatch(
+    0,
+    5,
+    const Color(0xFF21191C),
+  );
+
   static final theme = PixelUiThemeData(
     atlas: atlas,
     palette: const PixelUiPalette(
@@ -51,7 +57,7 @@ abstract final class UndiriaUi {
     ),
     surfaces: {
       PixelSurfaceRole.panel: panel,
-      PixelSurfaceRole.inset: panel,
+      PixelSurfaceRole.inset: mediumPanel,
       PixelSurfaceRole.button: panel,
       PixelSurfaceRole.dialog: panel,
     },

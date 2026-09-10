@@ -71,12 +71,17 @@ void main() {
       }
 
       expectLabelsInsideSectors();
+      final usedLabel = tester
+          .widget<Text>(option(0, 0))
+          .data!
+          .split('\n')
+          .last;
       await tester.tap(option(0, 0));
       await tester.pumpAndSettle();
       expect(confirm().onPressed, isNotNull);
       await tester.tap(find.byKey(const ValueKey('confirm-move')));
       await tester.pump();
-      expect(find.textContaining('FLAMEWARD'), findsWidgets);
+
       expect(confirm().onPressed, isNull);
       for (var i = 0; i < 20; i++) {
         await tester.pump(const Duration(milliseconds: 200));
@@ -84,10 +89,12 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(BattlePage), findsOneWidget);
       expect(find.byKey(const ValueKey('leave-battle')), findsNothing);
-      final hpBars = tester.widgetList<PixelResourceBar>(
-        find.byType(PixelResourceBar),
-      );
-      expect(hpBars.any((bar) => bar.value < bar.maximum), isTrue);
+      for (var i = 0; i < 3; i++) {
+        expect(
+          tester.widget<Text>(option(0, i)).data!.split('\n').last,
+          isNot(usedLabel),
+        );
+      }
       for (var round = 2; round <= 3; round++) {
         expect(confirm().onPressed, isNull);
         await tester.tap(option(0, 2));

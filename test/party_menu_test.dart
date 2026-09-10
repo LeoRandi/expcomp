@@ -40,8 +40,15 @@ void main() {
               find.byKey(const ValueKey('details-tiny_bot_01')),
             )
             .onPressed,
-        isNull,
+        isNotNull,
       );
+      await tester.tap(find.byKey(const ValueKey('details-tiny_bot_01')));
+      await tester.pumpAndSettle();
+      expect(find.text('Level 1'), findsOneWidget);
+      expect(find.byKey(const ValueKey('open-party')), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('info-back')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('party-menu')), findsOneWidget);
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
       await tester.pumpAndSettle();
       expect(tester.getTopLeft(world), before);

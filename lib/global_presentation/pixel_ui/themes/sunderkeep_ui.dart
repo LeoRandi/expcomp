@@ -93,6 +93,12 @@ abstract final class SunderedKeepUi {
     solidFillColor: const Color(0xFF35272A),
   );
 
+  static final mediumPanel = PixelPanelRecipe.ninePatch(
+    3,
+    0,
+    const Color(0xFF2B2224),
+  );
+
   static final theme = PixelUiThemeData(
     atlas: atlas,
     palette: const PixelUiPalette(
@@ -108,7 +114,7 @@ abstract final class SunderedKeepUi {
     ),
     surfaces: {
       PixelSurfaceRole.panel: woodPanel,
-      PixelSurfaceRole.inset: stoneInset,
+      PixelSurfaceRole.inset: mediumPanel,
       PixelSurfaceRole.button: woodPanel,
       PixelSurfaceRole.dialog: stoneInset,
     },

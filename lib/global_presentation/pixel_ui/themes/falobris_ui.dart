@@ -41,6 +41,12 @@ abstract final class FalobrisUi {
     solidFillColor: const Color(0xFF347F65),
   );
 
+  static final mediumPanel = PixelPanelRecipe.ninePatch(
+    0,
+    3,
+    const Color(0xFF347F65),
+  );
+
   static final theme = PixelUiThemeData(
     atlas: atlas,
     palette: const PixelUiPalette(
@@ -56,7 +62,7 @@ abstract final class FalobrisUi {
     ),
     surfaces: {
       PixelSurfaceRole.panel: panel,
-      PixelSurfaceRole.inset: panel,
+      PixelSurfaceRole.inset: mediumPanel,
       PixelSurfaceRole.button: panel,
       PixelSurfaceRole.dialog: panel,
     },

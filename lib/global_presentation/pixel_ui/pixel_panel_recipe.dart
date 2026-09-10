@@ -159,6 +159,26 @@ class PixelPanelRecipe {
     this.stamps = const [],
   });
 
+  /// A distinct three-by-three frame from the same source atlas.
+  factory PixelPanelRecipe.ninePatch(int column, int row, Color fillColor) {
+    PixelAtlasRegion tile(int x, int y) =>
+        PixelAtlasRegion(column: column + x, row: row + y);
+    PixelTileVariants edge(int x, int y) =>
+        PixelTileVariants.single(tile(x, y));
+    return PixelPanelRecipe(
+      topLeft: tile(0, 0),
+      top: edge(1, 0),
+      topRight: tile(2, 0),
+      left: edge(0, 1),
+      fill: edge(1, 1),
+      right: edge(2, 1),
+      bottomLeft: tile(0, 2),
+      bottom: edge(1, 2),
+      bottomRight: tile(2, 2),
+      solidFillColor: fillColor,
+    );
+  }
+
   final PixelAtlasRegion topLeft;
   final PixelTileVariants top;
   final PixelAtlasRegion topRight;

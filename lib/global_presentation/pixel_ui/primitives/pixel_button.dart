@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../pixel_atlas.dart';
 import '../pixel_grid.dart';
+import '../pixel_ui_metrics.dart';
 import '../pixel_panel.dart';
 import '../pixel_panel_recipe.dart';
 import '../pixel_ui_theme.dart';
@@ -23,9 +24,15 @@ class PixelButton extends StatefulWidget {
     this.atlas,
     this.recipe,
     this.expandToFill = false,
+    this.tileExtent = PixelUiMetrics.largeBorder,
+    this.fontSize = PixelUiMetrics.body,
+    this.role = PixelSurfaceRole.button,
   }) : assert(columns >= 2),
        assert(rows >= 2);
 
+  final double tileExtent;
+  final double fontSize;
+  final PixelSurfaceRole role;
   final String label;
   final VoidCallback? onPressed;
   final Widget? leading;
@@ -70,7 +77,7 @@ class _PixelButtonState extends State<PixelButton> {
     final emphasized = widget.selected || _hovered || _focused;
     final labelColor = widget.enabled ? palette.ink : palette.mutedInk;
 
-    return Semantics(
+    final body = Semantics(
       button: true,
       enabled: widget.enabled,
       selected: widget.selected,
@@ -104,7 +111,8 @@ class _PixelButtonState extends State<PixelButton> {
             gridSize: widget.expandToFill
                 ? null
                 : PixelGridSize(columns: widget.columns, rows: widget.rows),
-            role: PixelSurfaceRole.button,
+            role: widget.role,
+            tileExtent: widget.tileExtent,
             atlas: widget.atlas,
             recipe: widget.recipe,
             seed: widget.label.hashCode,
@@ -113,6 +121,7 @@ class _PixelButtonState extends State<PixelButton> {
               children: [
                 PixelStateOverlay(
                   tone: widget.tone,
+                  tileExtent: widget.tileExtent,
                   emphasized: emphasized,
                   pressed: _pressed,
                   disabled: !widget.enabled,
@@ -120,7 +129,9 @@ class _PixelButtonState extends State<PixelButton> {
                 Transform.translate(
                   offset: _pressed ? const Offset(0, 2) : Offset.zero,
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: widget.tileExtent + 4,
+                    ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       mainAxisSize: MainAxisSize.min,
@@ -137,7 +148,7 @@ class _PixelButtonState extends State<PixelButton> {
                             style: TextStyle(
                               color: labelColor,
                               fontFamily: 'monospace',
-                              fontSize: 12,
+                              fontSize: widget.fontSize,
                               fontWeight: FontWeight.w900,
                               height: 1,
                               letterSpacing: 0.6,
@@ -159,6 +170,31 @@ class _PixelButtonState extends State<PixelButton> {
           ),
         ),
       ),
+    );
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final unit = widget.tileExtent;
+        final desiredWidth = widget.expandToFill && constraints.hasBoundedWidth
+            ? constraints.maxWidth
+            : widget.columns * unit;
+        final desiredHeight =
+            widget.expandToFill && constraints.hasBoundedHeight
+            ? constraints.maxHeight
+            : widget.rows * unit;
+        final width = PixelGrid.snapDown(
+          desiredWidth.clamp(0, constraints.maxWidth),
+          tileExtent: unit,
+        );
+        final height = PixelGrid.snapDown(
+          desiredHeight.clamp(0, constraints.maxHeight),
+          tileExtent: unit,
+        );
+        return Align(
+          widthFactor: 1,
+          heightFactor: 1,
+          child: SizedBox(width: width, height: height, child: body),
+        );
+      },
     );
   }
 }

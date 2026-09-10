@@ -76,7 +76,7 @@ class PixelResourceBar extends StatelessWidget {
         style: TextStyle(
           color: palette.ink,
           fontFamily: 'monospace',
-          fontSize: 10,
+          fontSize: 12,
           fontWeight: FontWeight.w900,
           height: 1,
           shadows: const [Shadow(color: Colors.black, offset: Offset(1, 1))],

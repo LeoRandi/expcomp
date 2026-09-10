@@ -21,12 +21,14 @@ extension PixelControlToneColor on PixelControlTone {
 class PixelStateOverlay extends StatelessWidget {
   const PixelStateOverlay({
     super.key,
+    this.tileExtent,
     this.tone = PixelControlTone.neutral,
     this.emphasized = false,
     this.pressed = false,
     this.disabled = false,
   });
 
+  final double? tileExtent;
   final PixelControlTone tone;
   final bool emphasized;
   final bool pressed;
@@ -51,6 +53,7 @@ class PixelStateOverlay extends StatelessWidget {
 
     return IgnorePointer(
       child: PixelPanelInterior(
+        tileExtent: tileExtent,
         child: DecoratedBox(
           decoration: BoxDecoration(
             color: fillColor,

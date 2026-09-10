@@ -59,6 +59,20 @@ abstract final class RaidaUi {
     solidFillColor: const Color(0xFF19150D),
   );
 
+  static final mediumPanel = PixelPanelRecipe(
+    topLeft: atlas.region('earth_a'),
+    topRight: atlas.region('earth_b'),
+    bottomLeft: atlas.region('earth_b'),
+    bottomRight: atlas.region('earth_a'),
+    top: PixelTileVariants.single(atlas.region('short_stakes')),
+    bottom: PixelTileVariants.single(atlas.region('short_stakes')),
+    left: PixelTileVariants.single(atlas.region('vine_wall')),
+    right: PixelTileVariants.single(atlas.region('vine_wall')),
+    fill: PixelTileVariants.single(atlas.region('earth_a')),
+    bottomTransform: const PixelTileTransform(flipVertically: true),
+    solidFillColor: const Color(0xFF19150D),
+  );
+
   static final theme = PixelUiThemeData(
     atlas: atlas,
     palette: const PixelUiPalette(
@@ -74,7 +88,7 @@ abstract final class RaidaUi {
     ),
     surfaces: {
       PixelSurfaceRole.panel: panel,
-      PixelSurfaceRole.inset: panel,
+      PixelSurfaceRole.inset: mediumPanel,
       PixelSurfaceRole.button: panel,
       PixelSurfaceRole.dialog: panel,
     },

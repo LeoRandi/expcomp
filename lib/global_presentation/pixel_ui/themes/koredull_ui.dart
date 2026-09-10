@@ -41,6 +41,12 @@ abstract final class NeonBulkheadUi {
     bottomRight: atlas.region('bottom_right'),
   );
 
+  static final mediumPanel = PixelPanelRecipe.ninePatch(
+    5,
+    0,
+    const Color(0xFF21152C),
+  );
+
   static final theme = PixelUiThemeData(
     atlas: atlas,
     palette: const PixelUiPalette(
@@ -56,7 +62,7 @@ abstract final class NeonBulkheadUi {
     ),
     surfaces: {
       PixelSurfaceRole.panel: panel,
-      PixelSurfaceRole.inset: panel,
+      PixelSurfaceRole.inset: mediumPanel,
       PixelSurfaceRole.button: panel,
       PixelSurfaceRole.dialog: panel,
     },

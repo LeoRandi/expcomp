@@ -1,4 +1,4 @@
-enum MoveSplit { physical, magical, status }
+enum MoveSplit { physical, magical, curse, blessing }
 
 enum MoveTarget {
   closestEnemy,
@@ -39,7 +39,9 @@ class BattleMove {
   final MoveEffect effect;
   final String effectDescription;
   bool get dealsDamage =>
-      split != MoveSplit.status && potency != null && effect != MoveEffect.heal;
+      (split == MoveSplit.physical || split == MoveSplit.magical) &&
+      potency != null &&
+      effect != MoveEffect.heal;
   String get targetLabel => switch (target) {
     MoveTarget.closestEnemy => 'Closest enemy',
     MoveTarget.furthestEnemy => 'Furthest enemy',
@@ -79,7 +81,7 @@ const psyclash = BattleMove(
 const flameward = BattleMove(
   id: 'flameward',
   name: 'FLAMEWARD',
-  split: MoveSplit.status,
+  split: MoveSplit.blessing,
   target: MoveTarget.self,
   priority: 2,
   effect: MoveEffect.flameWard,
@@ -106,7 +108,7 @@ const brancheal = BattleMove(
 const poweride = BattleMove(
   id: 'poweride',
   name: 'POWERIDE',
-  split: MoveSplit.status,
+  split: MoveSplit.curse,
   target: MoveTarget.allOthers,
   priority: -1,
   effect: MoveEffect.powerTransfer,

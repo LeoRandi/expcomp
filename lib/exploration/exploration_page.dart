@@ -113,20 +113,29 @@ class _ExplorationPageState extends State<ExplorationPage> {
                     ),
                   ),
                   SizedBox(
-                    height: 230,
+                    height: 256,
                     child: PixelPanel.expanded(
                       role: PixelSurfaceRole.dialog,
                       padding: const EdgeInsets.all(24),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          const Text(
+                            'Cresca Villager',
+                            style: TextStyle(
+                              color: Color(0xFFE5DAC5),
+                              fontFamily: 'monospace',
+                              fontSize: PixelUiMetrics.title,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
                           const Expanded(
                             child: Text(
                               'Ready to meet your end?',
                               style: TextStyle(
                                 color: Color(0xFFE5DAC5),
                                 fontFamily: 'monospace',
-                                fontSize: 18,
+                                fontSize: PixelUiMetrics.body,
                                 height: 1.4,
                               ),
                             ),
@@ -190,7 +199,7 @@ class _ExplorationPageState extends State<ExplorationPage> {
                   style: TextStyle(
                     color: _gold,
                     fontFamily: 'monospace',
-                    fontSize: 18,
+                    fontSize: PixelUiMetrics.title,
                   ),
                 ),
                 const SizedBox(height: 16),

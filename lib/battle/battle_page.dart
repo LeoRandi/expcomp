@@ -9,7 +9,9 @@ const _ink = Color(0xFFE5DAC5);
 const _brass = Color(0xFFAA8C59);
 
 class BattlePage extends StatefulWidget {
-  const BattlePage({super.key});
+  const BattlePage({super.key, this.roster, this.random});
+  final List<BattleCreature>? roster;
+  final math.Random? random;
   @override
   State<BattlePage> createState() => _BattlePageState();
 }
@@ -20,13 +22,21 @@ class _BattlePageState extends State<BattlePage> {
   late final List<int?> _commands = List.filled(_allies.length, null);
   bool _resolving = false;
   int _round = 1;
-  final _random = math.Random();
+  late final _random = widget.random ?? math.Random();
   late String _message = 'Choose a move for ${_allies.first.name}';
   int _actionPulse = 0;
   String? _actingId;
   Set<String> _hitIds = {};
 
-  final _roster = createShowcaseBattle();
+  late final _roster = widget.roster ?? createShowcaseBattle();
+
+  @override
+  void initState() {
+    super.initState();
+    enterCombat(_roster);
+    dealRoundMoves(_roster, _random);
+  }
+
   List<BattleCreature> get _allies =>
       _roster.where((c) => c.side == BattleSide.allies).toList();
   List<BattleCreature> get _enemies =>
@@ -49,9 +59,12 @@ class _BattlePageState extends State<BattlePage> {
     final actions = orderActions([
       for (var i = 0; i < _allies.length; i++)
         if (_allies[i].alive && _commands[i] != null)
-          BattleAction(_allies[i], _allies[i].moves[_commands[i]!]),
+          BattleAction(_allies[i], _allies[i].offeredMoves[_commands[i]!]),
       for (final enemy in _enemies.where((c) => c.alive))
-        BattleAction(enemy, enemy.moves[(_round - 1) % enemy.moves.length]),
+        BattleAction(
+          enemy,
+          enemy.offeredMoves[_random.nextInt(enemy.offeredMoves.length)],
+        ),
     ], _random);
     setState(() {
       _resolving = true;
@@ -99,6 +112,7 @@ class _BattlePageState extends State<BattlePage> {
     }
     setState(() {
       _round++;
+      dealRoundMoves(_roster, _random);
       _activeAlly = _allies.indexWhere((c) => c.alive);
       _commands.fillRange(0, _commands.length, null);
       _resolving = false;
@@ -113,9 +127,10 @@ class _BattlePageState extends State<BattlePage> {
       child: Column(
         children: [
           Expanded(
+            flex: 1,
             child: PixelPanel.expanded(
-              tileExtent: 8,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              tileExtent: PixelUiMetrics.largeBorder,
+              padding: const EdgeInsets.all(16),
               child: Column(
                 children: [
                   _bars(false),
@@ -127,13 +142,14 @@ class _BattlePageState extends State<BattlePage> {
             ),
           ),
           Expanded(
+            flex: 2,
             child: PixelPanel.expanded(
-              tileExtent: 8,
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+              tileExtent: PixelUiMetrics.largeBorder,
+              padding: const EdgeInsets.all(16),
               child: Column(
                 children: [
                   SizedBox(
-                    height: 64,
+                    height: 32,
                     child: Center(
                       child: Text(
                         _message,
@@ -142,7 +158,7 @@ class _BattlePageState extends State<BattlePage> {
                         style: const TextStyle(
                           color: _ink,
                           fontFamily: 'monospace',
-                          fontSize: 11,
+                          fontSize: PixelUiMetrics.caption,
                         ),
                       ),
                     ),
@@ -189,7 +205,7 @@ class _BattlePageState extends State<BattlePage> {
                                         excluding: ally != _activeAlly,
                                         child: _MoveHexagon(
                                           key: ValueKey('ally-hexagon-$ally'),
-                                          moves: _allies[ally].moves,
+                                          moves: _allies[ally].offeredMoves,
                                           selected: ally == _activeAlly
                                               ? _selection
                                               : _commands[ally],
@@ -212,19 +228,19 @@ class _BattlePageState extends State<BattlePage> {
                   ),
                   const SizedBox(height: 8),
                   SizedBox(
-                    height: 42,
+                    height: 40,
                     child: Center(
                       child: Text(
                         _selection == null
                             ? 'Select a move'
                             : _moveDescription(
-                                _allies[_activeAlly].moves[_selection!],
+                                _allies[_activeAlly].offeredMoves[_selection!],
                               ),
                         textAlign: TextAlign.center,
                         style: const TextStyle(
                           color: _ink,
                           fontFamily: 'monospace',
-                          fontSize: 11,
+                          fontSize: PixelUiMetrics.caption,
                         ),
                       ),
                     ),
@@ -264,7 +280,7 @@ class _BattlePageState extends State<BattlePage> {
                     .toDouble(),
                 label: '${allies ? 'ALLY' : 'ENEMY'} ${i + 1}',
                 showValues: true,
-                tileExtent: 6,
+                tileExtent: PixelUiMetrics.mediumBorder,
                 tone: allies
                     ? PixelControlTone.positive
                     : PixelControlTone.danger,
@@ -380,12 +396,12 @@ class _MoveHexagon extends StatelessWidget {
                 ? const Color(0xFF725C3C)
                 : const Color(0xFF302C35),
             child: InkWell(
-              onTap: enabled ? () => onSelected(i) : null,
+              onTap: enabled && i < moves.length ? () => onSelected(i) : null,
               child: Semantics(
                 button: true,
                 selected: selected == i,
-                enabled: enabled,
-                label: moves[i].name,
+                enabled: enabled && i < moves.length,
+                label: i < moves.length ? moves[i].name : 'Empty move',
                 child: LayoutBuilder(
                   builder: (context, constraints) {
                     // Position by sector coordinates, not Align's remaining
@@ -393,7 +409,7 @@ class _MoveHexagon extends StatelessWidget {
                     final centerX = i == 0 ? .5 : (i == 1 ? .25 : .75);
                     final centerY = i == 0 ? .25 : .625;
                     final width = constraints.maxWidth * (i == 0 ? .54 : .38);
-                    final height = constraints.maxHeight * .18;
+                    final height = constraints.maxHeight * .25;
                     return Stack(
                       children: [
                         Positioned(
@@ -401,17 +417,16 @@ class _MoveHexagon extends StatelessWidget {
                           top: constraints.maxHeight * centerY - height / 2,
                           width: width,
                           height: height,
-                          child: FittedBox(
-                            fit: BoxFit.scaleDown,
+                          child: Center(
                             child: Text(
-                              '${i + 1}\n${moves[i].name}',
+                              '${i + 1}\n${i < moves.length ? moves[i].name : 'EMPTY'}',
                               key: ValueKey('move-option-$i'),
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                 color: enabled ? _ink : _brass,
                                 fontFamily: 'monospace',
-                                fontSize: 14,
-                                height: 1.5,
+                                fontSize: PixelUiMetrics.body,
+                                height: 1,
                               ),
                             ),
                           ),

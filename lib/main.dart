@@ -17,6 +17,11 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         fontFamily: 'monospace',
+        textTheme: const TextTheme(
+          titleLarge: TextStyle(fontSize: PixelUiMetrics.title),
+          bodyMedium: TextStyle(fontSize: PixelUiMetrics.body),
+          bodySmall: TextStyle(fontSize: PixelUiMetrics.caption),
+        ),
         // Sunderkeep is the shared menu skin; creature cards override it by source.
         extensions: <ThemeExtension<dynamic>>[SunderedKeepUi.theme],
       ),

@@ -4,6 +4,7 @@ import '../creatures/creature.dart';
 import '../creatures/showcase_party.dart';
 import '../global_presentation/pixel_ui/pixel_ui.dart';
 import 'creature_source_theme.dart';
+import 'creature_info_page.dart';
 
 class PartyMenu extends StatelessWidget {
   const PartyMenu({super.key, required this.onClose});
@@ -19,12 +20,12 @@ class PartyMenu extends StatelessWidget {
         children: [
           Expanded(
             child: PixelPanel.expanded(
-              tileExtent: 8,
-              padding: const EdgeInsets.all(12),
+              tileExtent: PixelUiMetrics.largeBorder,
+              padding: const EdgeInsets.all(16),
               child: LayoutBuilder(
                 builder: (context, constraints) {
                   final rowHeight = math.max(
-                    90.0,
+                    112.0,
                     (constraints.maxHeight - 40) / 6,
                   );
                   return ListView.separated(
@@ -96,18 +97,26 @@ class PartyMenu extends StatelessWidget {
   );
 }
 
-class _PartySlot extends StatelessWidget {
+class _PartySlot extends StatefulWidget {
   const _PartySlot({required this.creature});
   final Creature creature;
   @override
+  State<_PartySlot> createState() => _PartySlotState();
+}
+
+class _PartySlotState extends State<_PartySlot> {
+  Creature get creature => widget.creature;
+  @override
   Widget build(BuildContext context) {
-    final sourceTheme = themeForSource(creature.source).copyWith(tileExtent: 8);
+    final sourceTheme = themeForSource(
+      creature.source,
+    ).copyWith(tileExtent: PixelUiMetrics.largeBorder);
     return Theme(
       data: Theme.of(context).copyWith(extensions: [sourceTheme]),
       child: Builder(
         builder: (context) => PixelPanel.expanded(
           key: ValueKey('party-${creature.id}'),
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(16),
           child: LayoutBuilder(
             builder: (context, constraints) {
               final portraitSize = math.min(
@@ -148,19 +157,19 @@ class _PartySlot extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             color: sourceTheme.palette.ink,
-                            fontSize: 15,
+                            fontSize: PixelUiMetrics.title,
                             fontWeight: FontWeight.bold,
                             fontFamily: 'monospace',
                           ),
                         ),
                         const SizedBox(height: 4),
                         SizedBox(
-                          height: 22,
+                          height: 32,
                           child: PixelResourceBar.expanded(
                             value: creature.currentHp.toDouble(),
                             maximum: creature.maxHp.toDouble(),
                             showValues: false,
-                            tileExtent: 4,
+                            tileExtent: PixelUiMetrics.mediumBorder,
                             semanticLabel: '${creature.name} HP',
                           ),
                         ),
@@ -169,14 +178,28 @@ class _PartySlot extends StatelessWidget {
                   ),
                   const SizedBox(width: 8),
                   SizedBox(
-                    width: portraitSize,
-                    height: portraitSize,
+                    width: 48,
+                    height: 48,
                     child: PixelButton(
                       key: ValueKey('details-${creature.id}'),
                       label: '...',
-                      semanticLabel: 'Creature details coming soon',
+                      tileExtent: PixelUiMetrics.mediumBorder,
+                      role: PixelSurfaceRole.inset,
+                      semanticLabel: 'Open creature details',
                       expandToFill: true,
-                      onPressed: null,
+                      onPressed: () async {
+                        await showGeneralDialog<bool>(
+                          context: context,
+                          barrierColor: Colors.transparent,
+                          pageBuilder: (context, _, _) => SafeArea(
+                            child: Padding(
+                              padding: const EdgeInsets.only(top: 88),
+                              child: CreatureInfoPage(creature: creature),
+                            ),
+                          ),
+                        );
+                        if (mounted) setState(() {});
+                      },
                     ),
                   ),
                 ],

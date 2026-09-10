@@ -1,10 +1,14 @@
 import 'creature.dart';
+import 'innate_ability.dart';
+import '../battle/battle_move.dart';
 
 const _root = 'assets/monsters/50__Monsters_Pack_2D_Monster__';
 
 // Working names and starter values for the two showcase companions.
 const thornWisp = CreatureSpecies(
   id: 'thorn_wisp',
+  innate: shelteringBoughs,
+  moves: [psybite, psyclash, brancheal, flameward, wavelectrify],
   name: 'Thorn Wisp',
   frontAsset: '${_root}11_Front_Normal_Color_Palette_f0_c0_00342.png',
   backAsset: '${_root}11_Back_Normal_Color_Palette_f0_c0_00341.png',
@@ -21,6 +25,8 @@ const thornWisp = CreatureSpecies(
 );
 const emberBeetle = CreatureSpecies(
   id: 'ember_beetle',
+  innate: imposingShell,
+  moves: [piercecrash, headrip, wavelectrify, poweride, flameward],
   name: 'Ember Beetle',
   frontAsset: '${_root}12_Front_Normal_Color_Palette_f0_c0_00344.png',
   backAsset: '${_root}12_Back_Normal_Color_Palette_f0_c0_00343.png',
@@ -37,6 +43,8 @@ const emberBeetle = CreatureSpecies(
 );
 const tinyBot = CreatureSpecies(
   id: 'tiny_bot',
+  innate: selfRepair,
+  moves: [psyclash, wavelectrify, flameward, brancheal, poweride],
   name: 'Tiny Bot',
   frontAsset: '${_root}2_Front_Alternative_Color_Palette_f0_c0_00248.png',
   backAsset: '${_root}2_Back_Alternative_Color_Palette_f0_c0_00247.png',
