@@ -1,4 +1,9 @@
-enum InnateEffect { allyAreaGuard, entranceProwessDrop, regeneration }
+enum InnateEffect {
+  allyAreaGuard,
+  entranceProwessDrop,
+  regeneration,
+  roundFortune,
+}
 
 class InnateAbility {
   const InnateAbility(this.name, this.description, this.effect);
@@ -21,4 +26,10 @@ const selfRepair = InnateAbility(
   'Self Repair',
   'At the end of this creature’s action, restore 5% of its maximum HP.',
   InnateEffect.regeneration,
+);
+
+const twilightFortune = InnateAbility(
+  'Twilight Fortune',
+  'At the start of each round, randomly choose CRI or EVA and grant +5 points to this creature and its living allies. Stacks up to 100.',
+  InnateEffect.roundFortune,
 );

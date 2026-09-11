@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../global_presentation/pixel_ui/pixel_ui.dart';
@@ -6,6 +7,8 @@ import 'battle_move.dart';
 import 'combatant_motion.dart';
 import '../party/creature_source_theme.dart';
 import 'active_ally_border.dart';
+import '../creatures/creature.dart';
+import '../party/creature_info_page.dart';
 
 const _ink = Color(0xFFE5DAC5);
 const _brass = Color(0xFFAA8C59);
@@ -36,7 +39,63 @@ class _BattlePageState extends State<BattlePage> {
   void initState() {
     super.initState();
     enterCombat(_roster);
+    beginRound(_roster, _random);
     dealRoundMoves(_roster, _random);
+  }
+
+  Completer<void>? _inspectionClosed;
+
+  Future<void> _inspect(BattleCreature combatant) async {
+    if (_inspectionClosed != null) return;
+    final gate = Completer<void>();
+    _inspectionClosed = gate;
+    final species = CreatureSpecies(
+      id: combatant.species?.id ?? combatant.id,
+      name: combatant.species?.name ?? combatant.name,
+      frontAsset: combatant.species?.frontAsset ?? combatant.asset,
+      backAsset: combatant.species?.backAsset ?? combatant.asset,
+      baseStats: combatant.stats,
+      moves: combatant.moves,
+      innate: combatant.innate,
+    );
+    final snapshot = Creature(
+      id: combatant.id,
+      name: combatant.name,
+      species: species,
+      stats: combatant.stats,
+      currentHp: combatant.hp,
+      source: combatant.source,
+      level: combatant.level,
+    );
+    try {
+      await Navigator.of(context).push<void>(
+        MaterialPageRoute(
+          builder: (_) => Scaffold(
+            body: SafeArea(
+              child: CreatureInfoPage(
+                creature: snapshot,
+                readOnly: true,
+                combatStats: combatant.combatStats,
+              ),
+            ),
+          ),
+        ),
+      );
+    } finally {
+      if (!gate.isCompleted) gate.complete();
+      _inspectionClosed = null;
+    }
+  }
+
+  Future<void> _waitForInspection() async {
+    if (_inspectionClosed case final gate?) await gate.future;
+  }
+
+  @override
+  void dispose() {
+    final gate = _inspectionClosed;
+    if (gate != null && !gate.isCompleted) gate.complete();
+    super.dispose();
   }
 
   List<BattleCreature> get _allies =>
@@ -106,6 +165,7 @@ class _BattlePageState extends State<BattlePage> {
       _selection = null;
     });
     for (final action in actions) {
+      await _waitForInspection();
       if (!mounted) return;
       if (!action.user.alive) continue;
       setState(() {
@@ -115,6 +175,7 @@ class _BattlePageState extends State<BattlePage> {
         _message = '${action.user.name}: ${action.move.name}';
       });
       await Future<void>.delayed(const Duration(milliseconds: 200));
+      await _waitForInspection();
       if (!mounted) return;
       final results = resolveAction(action, _roster);
       setState(() {
@@ -131,6 +192,8 @@ class _BattlePageState extends State<BattlePage> {
         _message = '${action.user.name}: ${action.move.name}\n$details';
       });
       await Future<void>.delayed(const Duration(milliseconds: 600));
+      await _waitForInspection();
+      if (!mounted) return;
       if (!_allies.any((c) => c.alive) || !_enemies.any((c) => c.alive)) break;
     }
     if (!mounted) return;
@@ -141,6 +204,7 @@ class _BattlePageState extends State<BattlePage> {
       () => _message = defeated ? 'Battle finished' : 'Round $_round resolved',
     );
     await Future<void>.delayed(const Duration(milliseconds: 800));
+    await _waitForInspection();
     if (!mounted) return;
     if (defeated) {
       Navigator.of(context).pop();
@@ -148,6 +212,7 @@ class _BattlePageState extends State<BattlePage> {
     }
     setState(() {
       _round++;
+      beginRound(_roster, _random);
       dealRoundMoves(_roster, _random);
       _activeAlly = _allies.indexWhere((c) => c.alive);
       _commands.fillRange(0, _commands.length, null);
@@ -400,13 +465,19 @@ class _BattlePageState extends State<BattlePage> {
                             )
                             ? _actionPulse
                             : 0,
-                        child: PixelAssetSprite(
-                          key: ValueKey('${allies ? 'ally' : 'enemy'}-$i'),
-                          assetPath: (allies ? _allies : _enemies)[i].asset,
-                          opacity: (allies ? _allies : _enemies)[i].alive
-                              ? 1
-                              : .25,
-                          semanticLabel: (allies ? _allies : _enemies)[i].name,
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
+                          onLongPress: () =>
+                              _inspect((allies ? _allies : _enemies)[i]),
+                          child: PixelAssetSprite(
+                            key: ValueKey('${allies ? 'ally' : 'enemy'}-$i'),
+                            assetPath: (allies ? _allies : _enemies)[i].asset,
+                            opacity: (allies ? _allies : _enemies)[i].alive
+                                ? 1
+                                : .25,
+                            semanticLabel:
+                                (allies ? _allies : _enemies)[i].name,
+                          ),
                         ),
                       ),
                     ),

@@ -20,11 +20,15 @@ class BattleCreature {
     this.level = 1,
     this.source = CreatureSource.sunderkeep,
     this.innate,
+    this.species,
   }) : hp = currentHp ?? stats.maxHp,
        prowess = stats.pro.toDouble(),
        magicalProwess = stats.mpr.toDouble(),
        resistance = stats.res.toDouble(),
-       magicalResistance = stats.mre.toDouble();
+       magicalResistance = stats.mre.toDouble(),
+       criticalChance = stats.cri,
+       criticalEvasion = stats.eva;
+  final CreatureSpecies? species;
   final CreatureSource source;
   final int level;
   final InnateAbility? innate;
@@ -39,6 +43,17 @@ class BattleCreature {
   final List<BattleMove> moves;
   final String asset;
   int hp;
+  int criticalChance;
+  int criticalEvasion;
+  Map<String, int> get combatStats => {
+    ...stats.values,
+    'PRO': prowess.round(),
+    'MPR': magicalProwess.round(),
+    'RES': resistance.round(),
+    'MRE': magicalResistance.round(),
+    'CRI': criticalChance,
+    'EVA': criticalEvasion,
+  };
   double prowess;
   double magicalProwess;
   double resistance;
@@ -71,6 +86,7 @@ List<BattleCreature> createShowcaseBattle() => [
     BattleCreature(
       id: 'ally-$i',
       name: showcaseParty[i].name,
+      species: showcaseParty[i].species,
       source: showcaseParty[i].source,
       side: BattleSide.allies,
       slot: i,
@@ -85,6 +101,7 @@ List<BattleCreature> createShowcaseBattle() => [
     BattleCreature(
       id: 'enemy-$i',
       name: [thornWisp, emberBeetle][i].name,
+      species: [thornWisp, emberBeetle][i],
       source: [CreatureSource.raida, CreatureSource.undiria][i],
       side: BattleSide.enemies,
       slot: i,
@@ -334,6 +351,8 @@ Map<String, int> previewActionHp(
           level: creature.level,
           innate: creature.innate,
         )
+        ..criticalChance = creature.criticalChance
+        ..criticalEvasion = creature.criticalEvasion
         ..prowess = creature.prowess
         ..magicalProwess = creature.magicalProwess
         ..resistance = creature.resistance
@@ -345,4 +364,20 @@ Map<String, int> previewActionHp(
     copies,
   );
   return {for (final creature in copies) creature.id: creature.hp};
+}
+
+/// One shared random choice per living bearer, before commands are selected.
+void beginRound(List<BattleCreature> roster, Random random) {
+  for (final bearer in roster.where(
+    (c) => c.alive && c.innate?.effect == InnateEffect.roundFortune,
+  )) {
+    final increaseCritical = random.nextBool();
+    for (final ally in roster.where((c) => c.alive && c.side == bearer.side)) {
+      if (increaseCritical) {
+        ally.criticalChance = min(100, ally.criticalChance + 5);
+      } else {
+        ally.criticalEvasion = min(100, ally.criticalEvasion + 5);
+      }
+    }
+  }
 }

@@ -5,7 +5,14 @@ import '../global_presentation/pixel_ui/pixel_ui.dart';
 import 'creature_source_theme.dart';
 
 class CreatureInfoPage extends StatefulWidget {
-  const CreatureInfoPage({super.key, required this.creature});
+  const CreatureInfoPage({
+    super.key,
+    required this.creature,
+    this.readOnly = false,
+    this.combatStats = const {},
+  });
+  final bool readOnly;
+  final Map<String, int> combatStats;
   final Creature creature;
   @override
   State<CreatureInfoPage> createState() => _CreatureInfoPageState();
@@ -192,28 +199,29 @@ class _CreatureInfoPageState extends State<CreatureInfoPage> {
                                             ),
                                           ),
                                         ),
-                                        SizedBox(
-                                          width: 40,
-                                          height: 40,
-                                          child: PixelButton(
-                                            key: const ValueKey(
-                                              'rename-creature',
+                                        if (!widget.readOnly)
+                                          SizedBox(
+                                            width: 40,
+                                            height: 40,
+                                            child: PixelButton(
+                                              key: const ValueKey(
+                                                'rename-creature',
+                                              ),
+                                              label: '',
+                                              semanticLabel: 'Rename creature',
+                                              leading: Icon(
+                                                Icons.edit,
+                                                size: 16,
+                                                color: themeForSource(
+                                                  creature.source,
+                                                ).palette.ink,
+                                              ),
+                                              tileExtent: 8,
+                                              role: PixelSurfaceRole.inset,
+                                              expandToFill: true,
+                                              onPressed: _rename,
                                             ),
-                                            label: '',
-                                            semanticLabel: 'Rename creature',
-                                            leading: Icon(
-                                              Icons.edit,
-                                              size: 16,
-                                              color: themeForSource(
-                                                creature.source,
-                                              ).palette.ink,
-                                            ),
-                                            tileExtent: 8,
-                                            role: PixelSurfaceRole.inset,
-                                            expandToFill: true,
-                                            onPressed: _rename,
                                           ),
-                                        ),
                                       ],
                                     ),
                                     Text(creature.species.name),
@@ -221,7 +229,9 @@ class _CreatureInfoPageState extends State<CreatureInfoPage> {
                                     Text('Level ${creature.level}'),
                                     Text(creature.source.label),
                                     Text(
-                                      'Max HP: ${creature.baseStats.withExtra(_points).maxHp}',
+                                      widget.readOnly
+                                          ? 'HP: ${creature.currentHp}/${creature.maxHp}'
+                                          : 'Max HP: ${creature.baseStats.withExtra(_points).maxHp}',
                                     ),
                                   ],
                                 ),
@@ -236,8 +246,9 @@ class _CreatureInfoPageState extends State<CreatureInfoPage> {
                           ),
                           _InfoSection(
                             id: 'stats',
-                            title:
-                                'STATS  $_allocated / ${creature.pointBudget}',
+                            title: widget.readOnly
+                                ? 'STATS (COMBAT)'
+                                : 'STATS  $_allocated / ${creature.pointBudget}',
                             child: LayoutBuilder(
                               builder: (context, constraints) {
                                 final columns = constraints.maxWidth >= 520
@@ -301,7 +312,7 @@ class _CreatureInfoPageState extends State<CreatureInfoPage> {
                                   child: Column(
                                     children: [
                                       const Text(
-                                        'Equip up to five moves. Three are drawn each round. A used move sits out the next round.',
+                                        'Five move slots. Three moves are drawn each round. A used move sits out the next round.',
                                         style: TextStyle(
                                           fontSize: PixelUiMetrics.caption,
                                         ),
@@ -333,21 +344,22 @@ class _CreatureInfoPageState extends State<CreatureInfoPage> {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: SizedBox(
-                        height: 48,
-                        child: PixelButton(
-                          key: const ValueKey('info-save'),
-                          label: 'SAVE',
-                          expandToFill: true,
-                          onPressed: () {
-                            creature.saveBuild(_points, _moves, name: _name);
-                            Navigator.pop(context, true);
-                          },
+                    if (!widget.readOnly) const SizedBox(width: 8),
+                    if (!widget.readOnly)
+                      Expanded(
+                        child: SizedBox(
+                          height: 48,
+                          child: PixelButton(
+                            key: const ValueKey('info-save'),
+                            label: 'SAVE',
+                            expandToFill: true,
+                            onPressed: () {
+                              creature.saveBuild(_points, _moves, name: _name);
+                              Navigator.pop(context, true);
+                            },
+                          ),
                         ),
                       ),
-                    ),
                   ],
                 ),
               ],
@@ -361,6 +373,43 @@ class _CreatureInfoPageState extends State<CreatureInfoPage> {
   Widget _statRow(String stat) {
     final extra = _points[stat] ?? 0;
     final base = widget.creature.baseStats.values[stat]!;
+    if (widget.readOnly) {
+      final delta = (widget.combatStats[stat] ?? base) - base;
+      return _Frame(
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                '$stat: ${widget.combatStats[stat]?.toString()}',
+                key: ValueKey('combat-total-$stat'),
+                style: TextStyle(
+                  fontSize: PixelUiMetrics.body,
+                  color: delta > 0
+                      ? Colors.greenAccent
+                      : delta < 0
+                      ? Colors.redAccent
+                      : themeForSource(widget.creature.source).palette.ink,
+                ),
+              ),
+            ),
+            if (delta != 0)
+              Text(
+                '$base' + (delta > 0 ? '+$delta' : '$delta'),
+                key: ValueKey('combat-delta-$stat'),
+                style: TextStyle(
+                  fontSize: PixelUiMetrics.body,
+                  color: delta > 0
+                      ? Colors.greenAccent
+                      : delta < 0
+                      ? Colors.redAccent
+                      : themeForSource(widget.creature.source).palette.mutedInk,
+                ),
+              ),
+          ],
+        ),
+      );
+    }
+
     return _Frame(
       child: Row(
         children: [
@@ -440,17 +489,18 @@ class _CreatureInfoPageState extends State<CreatureInfoPage> {
               ),
             ],
             const SizedBox(height: 8),
-            SizedBox(
-              height: 40,
-              child: PixelButton(
-                key: ValueKey('change-move-$index'),
-                tileExtent: PixelUiMetrics.mediumBorder,
-                role: PixelSurfaceRole.inset,
-                label: 'CHANGE',
-                expandToFill: true,
-                onPressed: () => _changeMove(index),
+            if (!widget.readOnly)
+              SizedBox(
+                height: 40,
+                child: PixelButton(
+                  key: ValueKey('change-move-$index'),
+                  tileExtent: PixelUiMetrics.mediumBorder,
+                  role: PixelSurfaceRole.inset,
+                  label: 'CHANGE',
+                  expandToFill: true,
+                  onPressed: () => _changeMove(index),
+                ),
               ),
-            ),
           ],
         ),
       ),

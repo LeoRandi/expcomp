@@ -62,7 +62,7 @@ const tinyBot = CreatureSpecies(
 const thornwing = CreatureSpecies(
   id: 'thornwing',
   name: 'Thornwing',
-  innate: shelteringBoughs,
+  innate: twilightFortune,
   frontAsset: '${_root}14_Front_Normal_Color_Palette_f0_c0_00348.png',
   backAsset: '${_root}14_Back_Normal_Color_Palette_f0_c0_00347.png',
   moves: [psybite, piercecrash, headrip, psyclash, brancheal],
