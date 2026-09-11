@@ -19,6 +19,7 @@ class PixelResourceBar extends StatelessWidget {
     this.showValues = true,
     this.semanticLabel,
     this.tileExtent,
+    this.previewValue,
   }) : assert(maximum > 0),
        assert(columns != null && columns >= 4),
        assert(rows >= 2);
@@ -33,6 +34,7 @@ class PixelResourceBar extends StatelessWidget {
     this.showValues = true,
     this.semanticLabel,
     this.tileExtent,
+    this.previewValue,
   }) : assert(maximum > 0),
        assert(rows >= 2),
        columns = null;
@@ -47,12 +49,15 @@ class PixelResourceBar extends StatelessWidget {
   final String? semanticLabel;
   final double? tileExtent;
 
+  /// Hypothetical remaining value; the real value is retained until resolution.
+  final double? previewValue;
+
   bool get expanded => columns == null;
 
   double get fraction => (value / maximum).clamp(0, 1);
 
   String get valueText =>
-      '${_formatValue(value.clamp(0, maximum))}/${_formatValue(maximum)}';
+      '${_formatValue((previewValue ?? value).clamp(0, maximum))}/${_formatValue(maximum)}';
 
   static String _formatValue(num value) {
     return value % 1 == 0 ? value.toInt().toString() : value.toStringAsFixed(1);
@@ -86,6 +91,9 @@ class PixelResourceBar extends StatelessWidget {
 
     final track = _PixelResourceTrack(
       fraction: fraction,
+      previewFraction: previewValue == null
+          ? null
+          : (previewValue! / maximum).clamp(0, fraction),
       backgroundColor: palette.canvas,
       borderColor: palette.ink,
       fillColor: fillColor,
@@ -168,12 +176,14 @@ class PixelResourceBar extends StatelessWidget {
 class _PixelResourceTrack extends StatelessWidget {
   const _PixelResourceTrack({
     required this.fraction,
+    this.previewFraction,
     required this.backgroundColor,
     required this.borderColor,
     required this.fillColor,
   });
 
   final double fraction;
+  final double? previewFraction;
   final Color backgroundColor;
   final Color borderColor;
   final Color fillColor;
@@ -190,17 +200,70 @@ class _PixelResourceTrack extends StatelessWidget {
         child: LayoutBuilder(
           builder: (context, constraints) {
             final fillWidth = (constraints.maxWidth * fraction).floorToDouble();
-            return Align(
-              alignment: Alignment.centerLeft,
-              child: SizedBox(
-                width: fillWidth,
-                height: constraints.maxHeight,
-                child: ColoredBox(color: fillColor),
-              ),
+            final remainingWidth =
+                (constraints.maxWidth * (previewFraction ?? fraction))
+                    .floorToDouble();
+            return Stack(
+              children: [
+                Positioned(
+                  left: 0,
+                  top: 0,
+                  bottom: 0,
+                  width: fillWidth,
+                  child: ColoredBox(color: fillColor),
+                ),
+                if (previewFraction != null && remainingWidth < fillWidth)
+                  Positioned(
+                    left: remainingWidth,
+                    top: 0,
+                    bottom: 0,
+                    width: fillWidth - remainingWidth,
+                    child: const PixelDamagePreview(),
+                  ),
+              ],
             );
           },
         ),
       ),
     );
   }
+}
+
+/// The segment that would be lost flashes without modifying actual health.
+class PixelDamagePreview extends StatefulWidget {
+  const PixelDamagePreview({super.key});
+  @override
+  State<PixelDamagePreview> createState() => _PixelDamagePreviewState();
+}
+
+class _PixelDamagePreviewState extends State<PixelDamagePreview>
+    with SingleTickerProviderStateMixin {
+  late final _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 600),
+  );
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _controller.stop();
+      _controller.value = 0;
+    } else {
+      _controller.repeat(reverse: true);
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: _controller,
+    builder: (context, _) => ColoredBox(
+      color: Color.lerp(Colors.red, Colors.white, _controller.value)!,
+    ),
+  );
 }

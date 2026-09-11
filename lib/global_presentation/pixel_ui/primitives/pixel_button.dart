@@ -138,29 +138,30 @@ class _PixelButtonState extends State<PixelButton> {
                       children: [
                         if (widget.leading case final leading?) ...[
                           leading,
-                          const SizedBox(width: 4),
+                          if (widget.label.isNotEmpty) const SizedBox(width: 4),
                         ],
-                        Flexible(
-                          child: Text(
-                            widget.label.toUpperCase(),
-                            overflow: TextOverflow.fade,
-                            softWrap: false,
-                            style: TextStyle(
-                              color: labelColor,
-                              fontFamily: 'monospace',
-                              fontSize: widget.fontSize,
-                              fontWeight: FontWeight.w900,
-                              height: 1,
-                              letterSpacing: 0.6,
-                              shadows: const [
-                                Shadow(
-                                  color: Colors.black,
-                                  offset: Offset(1, 1),
-                                ),
-                              ],
+                        if (widget.label.isNotEmpty)
+                          Flexible(
+                            child: Text(
+                              widget.label.toUpperCase(),
+                              overflow: TextOverflow.fade,
+                              softWrap: false,
+                              style: TextStyle(
+                                color: labelColor,
+                                fontFamily: 'monospace',
+                                fontSize: widget.fontSize,
+                                fontWeight: FontWeight.w900,
+                                height: 1,
+                                letterSpacing: 0.6,
+                                shadows: const [
+                                  Shadow(
+                                    color: Colors.black,
+                                    offset: Offset(1, 1),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
-                        ),
                       ],
                     ),
                   ),

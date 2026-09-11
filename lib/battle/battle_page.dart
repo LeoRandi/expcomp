@@ -4,6 +4,8 @@ import '../global_presentation/pixel_ui/pixel_ui.dart';
 import 'battle_engine.dart';
 import 'battle_move.dart';
 import 'combatant_motion.dart';
+import '../party/creature_source_theme.dart';
+import 'active_ally_border.dart';
 
 const _ink = Color(0xFFE5DAC5);
 const _brass = Color(0xFFAA8C59);
@@ -41,6 +43,39 @@ class _BattlePageState extends State<BattlePage> {
       _roster.where((c) => c.side == BattleSide.allies).toList();
   List<BattleCreature> get _enemies =>
       _roster.where((c) => c.side == BattleSide.enemies).toList();
+
+  BattleAction? get _previewAction => _selection == null || _resolving
+      ? null
+      : BattleAction(
+          _allies[_activeAlly],
+          _allies[_activeAlly].offeredMoves[_selection!],
+        );
+  Set<String> get _previewTargets => _previewAction == null
+      ? {}
+      : targetsFor(_previewAction!, _roster).map((c) => c.id).toSet();
+  Map<String, int> get _previewHp =>
+      _previewAction == null ? {} : previewActionHp(_previewAction!, _roster);
+
+  Widget? _selectionBorder(BattleCreature creature) {
+    if (_resolving || !creature.alive) return null;
+    if (creature.side == BattleSide.allies &&
+        creature == _allies[_activeAlly]) {
+      return ActiveAllyBorder(
+        key: ValueKey('active-ally-${creature.slot}'),
+        color: themeForSource(creature.source).palette.accent,
+      );
+    }
+    if (_previewTargets.contains(creature.id)) {
+      return ActiveAllyBorder(
+        key: ValueKey('target-${creature.id}'),
+        semanticLabel: 'Selected move target: ${creature.name}',
+        color: creature.side == BattleSide.enemies
+            ? Colors.red
+            : themeForSource(creature.source).palette.accent,
+      );
+    }
+    return null;
+  }
 
   Future<void> _confirm() async {
     if (_selection == null || _resolving) return;
@@ -96,6 +131,7 @@ class _BattlePageState extends State<BattlePage> {
         _message = '${action.user.name}: ${action.move.name}\n$details';
       });
       await Future<void>.delayed(const Duration(milliseconds: 600));
+      if (!_allies.any((c) => c.alive) || !_enemies.any((c) => c.alive)) break;
     }
     if (!mounted) return;
     endRound(_roster);
@@ -106,7 +142,7 @@ class _BattlePageState extends State<BattlePage> {
     );
     await Future<void>.delayed(const Duration(milliseconds: 800));
     if (!mounted) return;
-    if (_round == 3 || defeated) {
+    if (defeated) {
       Navigator.of(context).pop();
       return;
     }
@@ -129,6 +165,7 @@ class _BattlePageState extends State<BattlePage> {
           Expanded(
             flex: 1,
             child: PixelPanel.expanded(
+              key: const ValueKey('combat-state-panel'),
               tileExtent: PixelUiMetrics.largeBorder,
               padding: const EdgeInsets.all(16),
               child: Column(
@@ -142,122 +179,141 @@ class _BattlePageState extends State<BattlePage> {
             ),
           ),
           Expanded(
-            flex: 2,
-            child: PixelPanel.expanded(
-              tileExtent: PixelUiMetrics.largeBorder,
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  SizedBox(
-                    height: 32,
-                    child: Center(
-                      child: Text(
-                        _message,
-                        key: const ValueKey('battle-message'),
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: _ink,
-                          fontFamily: 'monospace',
-                          fontSize: PixelUiMetrics.caption,
+            flex: 1,
+            child: Theme(
+              data: Theme.of(context).copyWith(
+                extensions: [themeForSource(_allies[_activeAlly].source)],
+              ),
+              child: PixelPanel.expanded(
+                key: const ValueKey('combat-command-panel'),
+                tileExtent: PixelUiMetrics.largeBorder,
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    SizedBox(
+                      height: 48,
+                      child: SingleChildScrollView(
+                        child: Text(
+                          _message,
+                          key: const ValueKey('battle-message'),
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: themeForSource(
+                              _allies[_activeAlly].source,
+                            ).palette.ink,
+                            fontFamily: 'monospace',
+                            fontSize: PixelUiMetrics.caption,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  Expanded(
-                    child: LayoutBuilder(
-                      builder: (context, constraints) {
-                        final extent = math.min(
-                          constraints.maxHeight,
-                          math.min(
-                            constraints.maxWidth /
-                                (_allies.length == 1 ? 1 : 1.4),
-                            340.0,
-                          ),
-                        );
-                        return Center(
-                          child: SizedBox(
-                            width: extent * (_allies.length == 1 ? 1 : 1.4),
-                            height: extent,
-                            child: Stack(
-                              children: [
-                                // Paint the inactive ally first, behind the active ally.
-                                for (final ally in [
-                                  if (_allies.length > 1) 1 - _activeAlly,
-                                  _activeAlly,
-                                ])
-                                  AnimatedPositioned(
-                                    key: ValueKey('hexagon-position-$ally'),
-                                    duration: const Duration(milliseconds: 280),
-                                    curve: Curves.easeInOut,
-                                    left: ally == 0
-                                        ? 0
-                                        : extent *
-                                              (ally == _activeAlly ? .4 : .6),
-                                    top: ally == _activeAlly ? 0 : extent * .1,
-                                    width:
-                                        extent * (ally == _activeAlly ? 1 : .8),
-                                    height:
-                                        extent * (ally == _activeAlly ? 1 : .8),
-                                    child: IgnorePointer(
-                                      ignoring:
-                                          ally != _activeAlly || _resolving,
-                                      child: ExcludeSemantics(
-                                        excluding: ally != _activeAlly,
-                                        child: _MoveHexagon(
-                                          key: ValueKey('ally-hexagon-$ally'),
-                                          moves: _allies[ally].offeredMoves,
-                                          selected: ally == _activeAlly
-                                              ? _selection
-                                              : _commands[ally],
-                                          enabled:
-                                              ally == _activeAlly &&
-                                              !_resolving,
-                                          onSelected: (index) => setState(
-                                            () => _selection = index,
+                    const SizedBox(height: 8),
+                    Expanded(
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          final extent = math.min(
+                            constraints.maxHeight,
+                            math.min(
+                              constraints.maxWidth /
+                                  (_allies.length == 1 ? 1 : 1.4),
+                              340.0,
+                            ),
+                          );
+                          return Center(
+                            child: SizedBox(
+                              width: extent * (_allies.length == 1 ? 1 : 1.4),
+                              height: extent,
+                              child: Stack(
+                                children: [
+                                  // Paint the inactive ally first, behind the active ally.
+                                  for (final ally in [
+                                    if (_allies.length > 1) 1 - _activeAlly,
+                                    _activeAlly,
+                                  ])
+                                    AnimatedPositioned(
+                                      key: ValueKey('hexagon-position-$ally'),
+                                      duration: const Duration(
+                                        milliseconds: 280,
+                                      ),
+                                      curve: Curves.easeInOut,
+                                      left: ally == 0
+                                          ? 0
+                                          : extent *
+                                                (ally == _activeAlly ? .4 : .6),
+                                      top: ally == _activeAlly
+                                          ? 0
+                                          : extent * .1,
+                                      width:
+                                          extent *
+                                          (ally == _activeAlly ? 1 : .8),
+                                      height:
+                                          extent *
+                                          (ally == _activeAlly ? 1 : .8),
+                                      child: IgnorePointer(
+                                        ignoring:
+                                            ally != _activeAlly || _resolving,
+                                        child: ExcludeSemantics(
+                                          excluding: ally != _activeAlly,
+                                          child: _MoveHexagon(
+                                            key: ValueKey('ally-hexagon-$ally'),
+                                            moves: _allies[ally].offeredMoves,
+                                            selected: ally == _activeAlly
+                                                ? _selection
+                                                : _commands[ally],
+                                            enabled:
+                                                ally == _activeAlly &&
+                                                !_resolving,
+                                            onSelected: (index) => setState(
+                                              () => _selection = index,
+                                            ),
                                           ),
                                         ),
                                       ),
                                     ),
-                                  ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    height: 40,
-                    child: Center(
-                      child: Text(
-                        _selection == null
-                            ? 'Select a move'
-                            : _moveDescription(
-                                _allies[_activeAlly].offeredMoves[_selection!],
+                                ],
                               ),
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: _ink,
-                          fontFamily: 'monospace',
-                          fontSize: PixelUiMetrics.caption,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      height: 40,
+                      child: SingleChildScrollView(
+                        child: Text(
+                          _selection == null
+                              ? 'Select a move'
+                              : _moveDescription(
+                                  _allies[_activeAlly]
+                                      .offeredMoves[_selection!],
+                                ),
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: themeForSource(
+                              _allies[_activeAlly].source,
+                            ).palette.ink,
+                            fontFamily: 'monospace',
+                            fontSize: PixelUiMetrics.caption,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  SizedBox(
-                    height: 48,
-                    width: double.infinity,
-                    child: PixelButton(
-                      key: const ValueKey('confirm-move'),
-                      label: 'SELECT',
-                      expandToFill: true,
-                      onPressed: _selection == null || _resolving
-                          ? null
-                          : _confirm,
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      height: 48,
+                      width: double.infinity,
+                      child: PixelButton(
+                        key: const ValueKey('confirm-move'),
+                        label: 'SELECT',
+                        expandToFill: true,
+                        onPressed: _selection == null || _resolving
+                            ? null
+                            : _confirm,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -267,23 +323,50 @@ class _BattlePageState extends State<BattlePage> {
   );
 
   Widget _bars(bool allies) => SizedBox(
-    height: 40,
+    height: 56,
     child: Row(
       children: [
-        for (var i = 0; i < (allies ? _allies : _enemies).length; i++)
+        for (final creature in (allies ? _allies : _enemies))
           Expanded(
             child: Padding(
-              padding: EdgeInsets.only(left: i == 1 ? 12 : 0),
-              child: PixelResourceBar.expanded(
-                value: (allies ? _allies : _enemies)[i].hp.toDouble(),
-                maximum: (allies ? _allies : _enemies)[i].stats.maxHp
-                    .toDouble(),
-                label: '${allies ? 'ALLY' : 'ENEMY'} ${i + 1}',
-                showValues: true,
-                tileExtent: PixelUiMetrics.mediumBorder,
-                tone: allies
-                    ? PixelControlTone.positive
-                    : PixelControlTone.danger,
+              padding: EdgeInsets.only(left: creature.slot == 0 ? 0 : 12),
+              child: Theme(
+                data: Theme.of(
+                  context,
+                ).copyWith(extensions: [themeForSource(creature.source)]),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      creature.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: PixelUiMetrics.caption,
+                        color: themeForSource(creature.source).palette.ink,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Expanded(
+                      child: PixelResourceBar.expanded(
+                        key: ValueKey('hp-${creature.id}'),
+                        value: creature.hp.toDouble(),
+                        previewValue:
+                            (_previewHp[creature.id] ?? creature.hp) <
+                                creature.hp
+                            ? _previewHp[creature.id]!.toDouble()
+                            : null,
+                        maximum: creature.stats.maxHp.toDouble(),
+                        semanticLabel: '${creature.name} HP',
+                        showValues: true,
+                        tileExtent: PixelUiMetrics.mediumBorder,
+                        tone: allies
+                            ? PixelControlTone.positive
+                            : PixelControlTone.danger,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -301,16 +384,6 @@ class _BattlePageState extends State<BattlePage> {
             Expanded(
               child: Column(
                 children: [
-                  SizedBox(
-                    height: 18,
-                    child: allies && !_resolving && _activeAlly == i
-                        ? const Icon(
-                            Icons.arrow_downward,
-                            color: _brass,
-                            size: 18,
-                          )
-                        : null,
-                  ),
                   Expanded(
                     child: Padding(
                       padding: const EdgeInsets.all(3),
@@ -333,11 +406,14 @@ class _BattlePageState extends State<BattlePage> {
                           opacity: (allies ? _allies : _enemies)[i].alive
                               ? 1
                               : .25,
-                          semanticLabel:
-                              '${allies ? 'Ally' : 'Enemy'} ${i + 1}',
+                          semanticLabel: (allies ? _allies : _enemies)[i].name,
                         ),
                       ),
                     ),
+                  ),
+                  SizedBox(
+                    height: 8,
+                    child: _selectionBorder((allies ? _allies : _enemies)[i]),
                   ),
                 ],
               ),
@@ -418,15 +494,21 @@ class _MoveHexagon extends StatelessWidget {
                           width: width,
                           height: height,
                           child: Center(
-                            child: Text(
-                              '${i + 1}\n${i < moves.length ? moves[i].name : 'EMPTY'}',
-                              key: ValueKey('move-option-$i'),
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: enabled ? _ink : _brass,
-                                fontFamily: 'monospace',
-                                fontSize: PixelUiMetrics.body,
-                                height: 1,
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: SizedBox(
+                                width: width,
+                                child: Text(
+                                  '${i + 1}\n${i < moves.length ? moves[i].name : 'EMPTY'}',
+                                  key: ValueKey('move-option-$i'),
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: enabled ? _ink : _brass,
+                                    fontFamily: 'monospace',
+                                    fontSize: PixelUiMetrics.caption,
+                                    height: 1,
+                                  ),
+                                ),
                               ),
                             ),
                           ),

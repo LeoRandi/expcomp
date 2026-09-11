@@ -47,13 +47,15 @@ void main() {
         ),
       ),
     );
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
     Finder option(int ally, int move) => find.descendant(
       of: find.byKey(ValueKey('ally-hexagon-$ally')),
       matching: find.byKey(ValueKey('move-option-$move')),
     );
     await tester.tap(option(0, 0)); // PSYCLASH hits unguarded enemy 2.
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
     final attacker = find.byKey(const ValueKey('ally-0'));
     final target = find.byKey(const ValueKey('enemy-1'));
     final start = tester.getCenter(attacker);

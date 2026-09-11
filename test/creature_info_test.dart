@@ -91,6 +91,25 @@ void main() {
             .role,
         PixelSurfaceRole.inset,
       );
+      await tapKey('rename-creature');
+      await tester.enterText(
+        find.byKey(const ValueKey('creature-name-input')),
+        '   ',
+      );
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<PixelButton>(find.byKey(const ValueKey('rename-done')))
+            .onPressed,
+        isNull,
+      );
+      await tester.enterText(
+        find.byKey(const ValueKey('creature-name-input')),
+        ' Draft Pip ',
+      );
+      await tapKey('rename-done');
+      expect(find.text('Draft Pip'), findsOneWidget);
+      expect(creature.name, 'Pip');
       final saveRect = tester.getRect(find.byKey(const ValueKey('info-save')));
       await tapKey('plus-CON');
       expect(creature.stats.con, 16);
@@ -129,6 +148,7 @@ void main() {
       expect(tester.getRect(find.byKey(const ValueKey('info-save'))), saveRect);
       await tapKey('info-back');
       expect(creature.extraPoints, isEmpty);
+      expect(creature.name, 'Pip');
       expect(creature.equippedMoves.first, isNotNull);
 
       await tester.tap(find.text('Open'));
@@ -146,7 +166,14 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('EMPTY SLOT'));
       await tester.pumpAndSettle();
+      await tapKey('rename-creature');
+      await tester.enterText(
+        find.byKey(const ValueKey('creature-name-input')),
+        'Cog',
+      );
+      await tapKey('rename-done');
       await tapKey('info-save');
+      expect(creature.name, 'Cog');
       expect(creature.stats.con, 17);
       expect(creature.equippedMoves.first, isNull);
       await tester.tap(find.text('Open'));

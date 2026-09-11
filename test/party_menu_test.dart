@@ -8,7 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   testWidgets(
-    'Party shows one companion, five empty slots and blocks world input',
+    'Party shows two companions, four empty slots and blocks world input',
     (tester) async {
       tester.view.physicalSize = const Size(390, 844);
       tester.view.devicePixelRatio = 1;
@@ -31,7 +31,7 @@ void main() {
           themeForSource(entry.value).atlas,
         );
       }
-      for (var i = 1; i < 6; i++) {
+      for (var i = 2; i < 6; i++) {
         expect(find.byKey(ValueKey('empty-party-slot-$i')), findsOneWidget);
       }
       expect(

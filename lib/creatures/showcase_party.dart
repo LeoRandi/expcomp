@@ -59,6 +59,24 @@ const tinyBot = CreatureSpecies(
     spe: 5,
   ),
 );
+const thornwing = CreatureSpecies(
+  id: 'thornwing',
+  name: 'Thornwing',
+  innate: shelteringBoughs,
+  frontAsset: '${_root}14_Front_Normal_Color_Palette_f0_c0_00348.png',
+  backAsset: '${_root}14_Back_Normal_Color_Palette_f0_c0_00347.png',
+  moves: [psybite, piercecrash, headrip, psyclash, brancheal],
+  baseStats: CreatureStats(
+    con: 10,
+    pro: 13,
+    mpr: 8,
+    res: 8,
+    mre: 9,
+    cri: 10,
+    eva: 8,
+    spe: 16,
+  ),
+);
 final showcaseParty = List<Creature>.unmodifiable([
   Creature(
     id: 'tiny_bot_01',
@@ -67,5 +85,13 @@ final showcaseParty = List<Creature>.unmodifiable([
     species: tinyBot,
     stats: tinyBot.baseStats,
     currentHp: tinyBot.baseStats.maxHp,
+  ),
+  Creature(
+    id: 'thornwing_01',
+    name: 'Vesper',
+    source: CreatureSource.undiria,
+    species: thornwing,
+    stats: thornwing.baseStats,
+    currentHp: thornwing.baseStats.maxHp,
   ),
 ]);

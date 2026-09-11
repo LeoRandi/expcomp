@@ -18,12 +18,14 @@ class BattleCreature {
     required this.asset,
     int? currentHp,
     this.level = 1,
+    this.source = CreatureSource.sunderkeep,
     this.innate,
   }) : hp = currentHp ?? stats.maxHp,
        prowess = stats.pro.toDouble(),
        magicalProwess = stats.mpr.toDouble(),
        resistance = stats.res.toDouble(),
        magicalResistance = stats.mre.toDouble();
+  final CreatureSource source;
   final int level;
   final InnateAbility? innate;
   bool entered = false;
@@ -69,6 +71,7 @@ List<BattleCreature> createShowcaseBattle() => [
     BattleCreature(
       id: 'ally-$i',
       name: showcaseParty[i].name,
+      source: showcaseParty[i].source,
       side: BattleSide.allies,
       slot: i,
       stats: showcaseParty[i].stats,
@@ -81,7 +84,8 @@ List<BattleCreature> createShowcaseBattle() => [
   for (var i = 0; i < 2; i++)
     BattleCreature(
       id: 'enemy-$i',
-      name: 'Enemy ${i + 1}',
+      name: [thornWisp, emberBeetle][i].name,
+      source: [CreatureSource.raida, CreatureSource.undiria][i],
       side: BattleSide.enemies,
       slot: i,
       stats: [thornWisp, emberBeetle][i].baseStats,
@@ -307,4 +311,38 @@ void dealRoundMoves(List<BattleCreature> roster, Random random) {
     // Only an actually executed action is excluded from the following round.
     creature.lastUsedMove = null;
   }
+}
+
+/// Resolve an isolated copy to preview current defenses, wards and innates.
+/// Does not predict changes from commands which have not executed yet.
+Map<String, int> previewActionHp(
+  BattleAction action,
+  List<BattleCreature> roster,
+) {
+  final copies = [
+    for (final creature in roster)
+      BattleCreature(
+          id: creature.id,
+          name: creature.name,
+          side: creature.side,
+          slot: creature.slot,
+          stats: creature.stats,
+          moves: creature.moves,
+          asset: creature.asset,
+          currentHp: creature.hp,
+          source: creature.source,
+          level: creature.level,
+          innate: creature.innate,
+        )
+        ..prowess = creature.prowess
+        ..magicalProwess = creature.magicalProwess
+        ..resistance = creature.resistance
+        ..magicalResistance = creature.magicalResistance
+        ..flameWardActive = creature.flameWardActive,
+  ];
+  resolveAction(
+    BattleAction(copies.firstWhere((c) => c.id == action.user.id), action.move),
+    copies,
+  );
+  return {for (final creature in copies) creature.id: creature.hp};
 }

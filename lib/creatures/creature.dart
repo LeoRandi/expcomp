@@ -95,7 +95,7 @@ class Creature {
        assert(currentHp >= 0),
        assert(currentHp <= stats.con * 10);
   final String id;
-  final String name;
+  String name;
   final CreatureSpecies species;
   final CreatureStats baseStats;
   final int level;
@@ -109,9 +109,15 @@ class Creature {
   int get pointBudget => level * 10;
   CreatureStats get stats => baseStats.withExtra(_extra);
 
-  void saveBuild(Map<String, int> points, List<BattleMove?> moves) {
+  void saveBuild(
+    Map<String, int> points,
+    List<BattleMove?> moves, {
+    String? name,
+  }) {
+    final newName = (name ?? this.name).trim();
     final total = points.values.fold(0, (a, b) => a + b);
-    if (points.keys.any((key) => !statNames.contains(key)) ||
+    if (newName.isEmpty ||
+        points.keys.any((key) => !statNames.contains(key)) ||
         points.values.any((value) => value < 0) ||
         total > pointBudget ||
         moves.length != 5 ||
@@ -123,6 +129,7 @@ class Creature {
       throw ArgumentError('Invalid creature build');
     }
     final missingHp = maxHp - currentHp;
+    this.name = newName;
     _extra = Map.of(points);
     _equippedMoves = List.of(moves);
     if (currentHp > 0) currentHp = (maxHp - missingHp).clamp(1, maxHp);

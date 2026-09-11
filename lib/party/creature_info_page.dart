@@ -14,6 +14,19 @@ class CreatureInfoPage extends StatefulWidget {
 class _CreatureInfoPageState extends State<CreatureInfoPage> {
   late final Map<String, int> _points = Map.of(widget.creature.extraPoints);
   late final List<BattleMove?> _moves = List.of(widget.creature.equippedMoves);
+  late String _name = widget.creature.name;
+
+  Future<void> _rename() async {
+    final name = await showDialog<String>(
+      context: context,
+      builder: (context) => Theme(
+        data: _sourceTheme(context),
+        child: _RenameDialog(name: _name),
+      ),
+    );
+    if (name != null && mounted) setState(() => _name = name);
+  }
+
   int get _allocated => _points.values.fold(0, (a, b) => a + b);
 
   void _changePoint(String stat, int delta) {
@@ -169,11 +182,39 @@ class _CreatureInfoPageState extends State<CreatureInfoPage> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(
-                                      creature.name,
-                                      style: const TextStyle(
-                                        fontSize: PixelUiMetrics.title,
-                                      ),
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            _name,
+                                            style: const TextStyle(
+                                              fontSize: PixelUiMetrics.title,
+                                            ),
+                                          ),
+                                        ),
+                                        SizedBox(
+                                          width: 40,
+                                          height: 40,
+                                          child: PixelButton(
+                                            key: const ValueKey(
+                                              'rename-creature',
+                                            ),
+                                            label: '',
+                                            semanticLabel: 'Rename creature',
+                                            leading: Icon(
+                                              Icons.edit,
+                                              size: 16,
+                                              color: themeForSource(
+                                                creature.source,
+                                              ).palette.ink,
+                                            ),
+                                            tileExtent: 8,
+                                            role: PixelSurfaceRole.inset,
+                                            expandToFill: true,
+                                            onPressed: _rename,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                     Text(creature.species.name),
                                     const SizedBox(height: 8),
@@ -301,7 +342,7 @@ class _CreatureInfoPageState extends State<CreatureInfoPage> {
                           label: 'SAVE',
                           expandToFill: true,
                           onPressed: () {
-                            creature.saveBuild(_points, _moves);
+                            creature.saveBuild(_points, _moves, name: _name);
                             Navigator.pop(context, true);
                           },
                         ),
@@ -566,4 +607,109 @@ class _TargetDiagram extends StatelessWidget {
       ),
     );
   }
+}
+
+class _RenameDialog extends StatefulWidget {
+  const _RenameDialog({required this.name});
+  final String name;
+  @override
+  State<_RenameDialog> createState() => _RenameDialogState();
+}
+
+class _RenameDialogState extends State<_RenameDialog> {
+  late final _controller = TextEditingController(text: widget.name);
+  void _done() {
+    final name = _controller.text.trim();
+    if (name.isNotEmpty) Navigator.pop(context, name);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => Dialog(
+    backgroundColor: Colors.transparent,
+    child: SingleChildScrollView(
+      child: SizedBox(
+        width: 360,
+        height: 288,
+        child: PixelPanel.expanded(
+          tileExtent: 16,
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            children: [
+              Text(
+                'Creature name',
+                style: TextStyle(
+                  fontSize: 24,
+                  color: PixelUiThemeData.of(context).palette.ink,
+                ),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                height: 80,
+                child: PixelPanel.expanded(
+                  role: PixelSurfaceRole.inset,
+                  tileExtent: 8,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  child: TextField(
+                    key: const ValueKey('creature-name-input'),
+                    controller: _controller,
+                    autofocus: true,
+                    maxLength: 24,
+                    textInputAction: TextInputAction.done,
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: PixelUiThemeData.of(context).palette.ink,
+                    ),
+                    decoration: const InputDecoration(
+                      border: InputBorder.none,
+                      counterText: '',
+                    ),
+                    onChanged: (_) => setState(() {}),
+                    onSubmitted: (_) => _done(),
+                  ),
+                ),
+              ),
+              const Spacer(),
+              Row(
+                children: [
+                  Expanded(
+                    child: SizedBox(
+                      height: 48,
+                      child: PixelButton(
+                        label: 'BACK',
+                        expandToFill: true,
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: SizedBox(
+                      height: 48,
+                      child: PixelButton(
+                        key: const ValueKey('rename-done'),
+                        label: 'DONE',
+                        expandToFill: true,
+                        onPressed: _controller.text.trim().isEmpty
+                            ? null
+                            : _done,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
 }
