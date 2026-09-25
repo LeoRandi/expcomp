@@ -23,7 +23,7 @@ void main() {
       expect(tester.getCenter(npc).dy, closeTo(center.dy - tile, .01));
       expect(tester.getSize(world).width, closeTo(tile * 20, .01));
       expect(tester.getSize(world).height, closeTo(tile * 20, .01));
-      expect(tester.getCenter(player), center);
+      expect((tester.getCenter(player) - center).distance, lessThan(.001));
       var column = 10;
       var row = 10;
       Future<void> move(String direction, int dx, int dy) async {
@@ -38,7 +38,7 @@ void main() {
         await tester.tap(find.byKey(ValueKey('move-$direction')));
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 75));
-        expect(tester.getCenter(player), center);
+        expect((tester.getCenter(player) - center).distance, lessThan(.001));
         if (nextColumn != column || nextRow != row) {
           final distance = (tester.getTopLeft(world) - before).distance;
           expect(distance, greaterThan(0));
@@ -51,7 +51,7 @@ void main() {
           closeTo(before.dx - (nextColumn - column) * tile, .01),
         );
         expect(after.dy, closeTo(before.dy - (nextRow - row) * tile, .01));
-        expect(tester.getCenter(player), center);
+        expect((tester.getCenter(player) - center).distance, lessThan(.001));
         column = nextColumn;
         row = nextRow;
         if (hitsNpc) {
@@ -94,7 +94,7 @@ void main() {
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
       await tester.pumpAndSettle();
       expect(tester.getTopLeft(world).dx, closeTo(beforeKey.dx + tile, .01));
-      expect(tester.getCenter(player), center);
+      expect((tester.getCenter(player) - center).distance, lessThan(.001));
       expect(tester.takeException(), isNull);
     },
   );

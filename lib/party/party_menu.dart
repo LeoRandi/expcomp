@@ -190,13 +190,10 @@ class _PartySlotState extends State<_PartySlot> {
                       onPressed: () async {
                         await showGeneralDialog<bool>(
                           context: context,
+                          useRootNavigator: false,
                           barrierColor: Colors.transparent,
-                          pageBuilder: (context, _, _) => SafeArea(
-                            child: Padding(
-                              padding: const EdgeInsets.only(top: 88),
-                              child: CreatureInfoPage(creature: creature),
-                            ),
-                          ),
+                          pageBuilder: (context, _, _) =>
+                              CreatureInfoPage(creature: creature),
                         );
                         if (mounted) setState(() {});
                       },

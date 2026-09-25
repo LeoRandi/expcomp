@@ -7,7 +7,12 @@ import 'package:flutter/services.dart';
 import '../global_presentation/pixel_ui/pixel_ui.dart';
 import '../battle/battle_page.dart';
 import '../party/party_menu.dart';
+import '../inventory/inventory_menu.dart';
+import '../player/player.dart';
 import 'cresca_map.dart';
+import 'world_layers.dart';
+
+enum _PlayerWindow { player, party, inventory }
 
 const _gold = Color(0xFFAA8C59);
 const _sprite =
@@ -26,7 +31,9 @@ final _npcAtlas = PixelAtlasDefinition(
 );
 
 class ExplorationPage extends StatefulWidget {
-  const ExplorationPage({super.key});
+  const ExplorationPage({super.key, this.player});
+
+  final Player? player;
 
   @override
   State<ExplorationPage> createState() => _ExplorationPageState();
@@ -41,7 +48,9 @@ class _ExplorationPageState extends State<ExplorationPage> {
   int _row = cells ~/ 2;
   bool _faceLeft = false;
   bool _dialogueOpen = false;
-  bool _partyOpen = false;
+  _PlayerWindow? _window;
+  GlobalKey<NavigatorState> _windowNavigator = GlobalKey<NavigatorState>();
+  late final Player _player = widget.player ?? Player.demo();
   final _focus = FocusNode();
 
   @override
@@ -51,7 +60,7 @@ class _ExplorationPageState extends State<ExplorationPage> {
   }
 
   void _move(int dx, int dy) {
-    if (_dialogueOpen || _partyOpen) return;
+    if (_dialogueOpen || _window != null) return;
     _focus.requestFocus();
     final nextColumn = (_column + dx).clamp(0, cells - 1);
     final nextRow = (_row + dy).clamp(0, cells - 1);
@@ -179,222 +188,281 @@ class _ExplorationPageState extends State<ExplorationPage> {
     }
   }
 
-  void _showPlayer() {
-    showDialog<void>(
-      context: context,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        child: SizedBox(
-          width: 360,
-          height: 240,
-          child: PixelPanel.expanded(
-            role: PixelSurfaceRole.dialog,
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Youngest of Cresca',
-                  style: TextStyle(
-                    color: _gold,
-                    fontFamily: 'monospace',
-                    fontSize: PixelUiMetrics.title,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                const Expanded(
-                  child: Text(
-                    'Your journey begins here.\nPlayer details are coming soon.',
-                    style: TextStyle(
-                      color: Color(0xFFE5DAC5),
-                      fontFamily: 'monospace',
-                    ),
-                  ),
-                ),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: PixelButton(
-                    key: const ValueKey('close-player-info'),
-                    label: 'Close',
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ),
-              ],
+  Widget _playerInfo() => Dialog(
+    backgroundColor: Colors.transparent,
+    elevation: 0,
+    child: SizedBox(
+      width: 360,
+      height: 240,
+      child: PixelPanel.expanded(
+        role: PixelSurfaceRole.dialog,
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              _player.name,
+              style: const TextStyle(
+                color: _gold,
+                fontFamily: 'monospace',
+                fontSize: PixelUiMetrics.title,
+              ),
             ),
-          ),
+            const SizedBox(height: 16),
+            const Expanded(
+              child: Text(
+                'Your journey begins here.\nPlayer details are coming soon.',
+                style: TextStyle(
+                  color: Color(0xFFE5DAC5),
+                  fontFamily: 'monospace',
+                ),
+              ),
+            ),
+            Align(
+              alignment: Alignment.centerRight,
+              child: PixelButton(
+                key: const ValueKey('close-player-info'),
+                label: 'Close',
+                onPressed: _closeWindow,
+              ),
+            ),
+          ],
         ),
       ),
-    ).then((_) {
-      if (mounted) _focus.requestFocus();
+    ),
+  );
+
+  void _showWindow(_PlayerWindow window) {
+    if (_window == window) {
+      _closeWindow();
+      return;
+    }
+    setState(() {
+      _window = window;
+      // Switching discards the previous window's detail/dialog navigation too.
+      _windowNavigator = GlobalKey<NavigatorState>();
     });
   }
 
-  Future<void> _showParty() async {
-    if (_partyOpen) return;
-    _partyOpen = true;
-    try {
-      await showGeneralDialog<void>(
-        context: context,
-        barrierColor: Colors.transparent,
-        transitionDuration: const Duration(milliseconds: 180),
-        pageBuilder: (context, _, _) => SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.only(top: 88),
-            child: PartyMenu(onClose: () => Navigator.pop(context)),
-          ),
-        ),
-      );
-    } finally {
-      _partyOpen = false;
-      if (mounted) _focus.requestFocus();
-    }
+  void _closeWindow() {
+    setState(() => _window = null);
+    _focus.requestFocus();
+  }
+
+  Future<void> _backWindow() async {
+    final navigator = _windowNavigator.currentState;
+    if (navigator != null && await navigator.maybePop()) return;
+    if (mounted && _window != null) _closeWindow();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: Focus(
-        focusNode: _focus,
-        autofocus: true,
-        onKeyEvent: _onKey,
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final insets = MediaQuery.paddingOf(context);
-            final usableHeight = math.max(
-              0.0,
-              constraints.maxHeight - insets.vertical - 88,
-            );
-            // Preserve the tile scale from the original framed viewport.
-            final tile =
-                math.min(
+    return PopScope<Object?>(
+      canPop: _window == null,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop && _window != null) _backWindow();
+      },
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: Focus(
+          focusNode: _focus,
+          autofocus: true,
+          onKeyEvent: _onKey,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final insets = MediaQuery.paddingOf(context);
+              final usableHeight = math.max(
+                0.0,
+                constraints.maxHeight - insets.vertical - 88,
+              );
+              // Preserve the tile scale from the original framed viewport.
+              final tile =
                   math.min(
-                    constraints.maxWidth - insets.horizontal - 24,
-                    560.0,
+                    math.min(
+                      constraints.maxWidth - insets.horizontal - 24,
+                      560.0,
+                    ),
+                    usableHeight * .62,
+                  ) /
+                  visibleCells;
+              final controlsSize = math.min(280.0, usableHeight * .34);
+              return Stack(
+                fit: StackFit.expand,
+                children: [
+                  _board(
+                    Size(constraints.maxWidth, constraints.maxHeight),
+                    tile,
                   ),
-                  usableHeight * .62,
-                ) /
-                visibleCells;
-            final controlsSize = math.min(280.0, usableHeight * .34);
-            return Stack(
-              fit: StackFit.expand,
-              children: [
-                _board(Size(constraints.maxWidth, constraints.maxHeight), tile),
-                SafeArea(
-                  child: Column(
-                    children: [
-                      SizedBox(
-                        height: 88,
-                        child: PixelPanel.expanded(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 10,
-                          ),
-                          child: Row(
-                            children: [
-                              SizedBox(
-                                width: 60,
-                                height: 66,
-                                child: Material(
-                                  color: const Color(0xFF242026),
-                                  shape: const _HexagonBorder(),
-                                  clipBehavior: Clip.antiAlias,
-                                  child: InkWell(
-                                    onTap: _showPlayer,
-                                    child: Semantics(
-                                      button: true,
-                                      label: 'Player information',
-                                      child: const Center(
-                                        child: Icon(
-                                          Icons.close,
-                                          color: Color(0xFFC35C55),
-                                          size: 34,
+                  SafeArea(
+                    child: Column(
+                      children: [
+                        SizedBox(
+                          height: 88,
+                          child: PixelPanel.expanded(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 10,
+                            ),
+                            child: Row(
+                              children: [
+                                SizedBox(
+                                  width: 60,
+                                  height: 66,
+                                  child: Material(
+                                    color: const Color(0xFF242026),
+                                    shape: const _HexagonBorder(),
+                                    clipBehavior: Clip.antiAlias,
+                                    child: InkWell(
+                                      onTap: () =>
+                                          _showWindow(_PlayerWindow.player),
+                                      child: Semantics(
+                                        button: true,
+                                        label: 'Player information',
+                                        child: const Center(
+                                          child: Icon(
+                                            Icons.close,
+                                            color: Color(0xFFC35C55),
+                                            size: 34,
+                                          ),
                                         ),
                                       ),
                                     ),
                                   ),
                                 ),
-                              ),
-                              const SizedBox(width: 16),
-                              SizedBox(
-                                width: 56,
-                                height: 56,
-                                child: Material(
-                                  color: const Color(0xFF242026),
-                                  shape: const _HexagonBorder(),
-                                  clipBehavior: Clip.antiAlias,
-                                  child: InkWell(
-                                    key: const ValueKey('open-party'),
-                                    onTap: _showParty,
-                                    child: Semantics(
-                                      label: 'Party',
-                                      button: true,
-                                      child: Center(
-                                        child: Icon(
-                                          Icons.pets,
-                                          color: _gold,
-                                          size: 32,
+                                const SizedBox(width: 16),
+                                SizedBox(
+                                  width: 56,
+                                  height: 56,
+                                  child: Material(
+                                    color: const Color(0xFF242026),
+                                    shape: const _HexagonBorder(),
+                                    clipBehavior: Clip.antiAlias,
+                                    child: InkWell(
+                                      key: const ValueKey('open-party'),
+                                      onTap: () =>
+                                          _showWindow(_PlayerWindow.party),
+                                      child: Semantics(
+                                        label: 'Party',
+                                        button: true,
+                                        child: Center(
+                                          child: Icon(
+                                            Icons.pets,
+                                            color: _gold,
+                                            size: 32,
+                                          ),
                                         ),
                                       ),
                                     ),
                                   ),
                                 ),
-                              ),
-                            ],
+                                const SizedBox(width: 16),
+                                SizedBox(
+                                  width: 56,
+                                  height: 56,
+                                  child: Material(
+                                    color: const Color(0xFF242026),
+                                    shape: const _HexagonBorder(),
+                                    clipBehavior: Clip.antiAlias,
+                                    child: InkWell(
+                                      key: const ValueKey('open-inventory'),
+                                      onTap: () =>
+                                          _showWindow(_PlayerWindow.inventory),
+                                      child: Semantics(
+                                        label: 'Inventory',
+                                        button: true,
+                                        child: const Center(
+                                          child: Icon(
+                                            Icons.shopping_bag_outlined,
+                                            color: _gold,
+                                            size: 32,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                      const Spacer(),
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: SizedBox(
-                          width: controlsSize,
-                          height: controlsSize,
-                          child: Stack(
-                            children: [
-                              _direction(
-                                Alignment.topCenter,
-                                Icons.arrow_upward,
-                                'up',
-                                0,
-                                -1,
-                                controlsSize,
-                              ),
-                              _direction(
-                                Alignment.centerLeft,
-                                Icons.arrow_back,
-                                'left',
-                                -1,
-                                0,
-                                controlsSize,
-                              ),
-                              _direction(
-                                Alignment.centerRight,
-                                Icons.arrow_forward,
-                                'right',
-                                1,
-                                0,
-                                controlsSize,
-                              ),
-                              _direction(
-                                Alignment.bottomCenter,
-                                Icons.arrow_downward,
-                                'down',
-                                0,
-                                1,
-                                controlsSize,
-                              ),
-                            ],
+                        const Spacer(),
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: SizedBox(
+                            width: controlsSize,
+                            height: controlsSize,
+                            child: Stack(
+                              children: [
+                                _direction(
+                                  Alignment.topCenter,
+                                  Icons.arrow_upward,
+                                  'up',
+                                  0,
+                                  -1,
+                                  controlsSize,
+                                ),
+                                _direction(
+                                  Alignment.centerLeft,
+                                  Icons.arrow_back,
+                                  'left',
+                                  -1,
+                                  0,
+                                  controlsSize,
+                                ),
+                                _direction(
+                                  Alignment.centerRight,
+                                  Icons.arrow_forward,
+                                  'right',
+                                  1,
+                                  0,
+                                  controlsSize,
+                                ),
+                                _direction(
+                                  Alignment.bottomCenter,
+                                  Icons.arrow_downward,
+                                  'down',
+                                  0,
+                                  1,
+                                  controlsSize,
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-              ],
-            );
-          },
+                  if (_window != null)
+                    Positioned.fill(
+                      top: insets.top + 88,
+                      bottom: insets.bottom,
+                      left: insets.left,
+                      right: insets.right,
+                      child: ClipRect(
+                        child: Navigator(
+                          key: _windowNavigator,
+                          onGenerateRoute: (_) => MaterialPageRoute<void>(
+                            builder: (context) => switch (_window!) {
+                              _PlayerWindow.player => ColoredBox(
+                                color: Colors.transparent,
+                                child: _playerInfo(),
+                              ),
+                              _PlayerWindow.party => PartyMenu(
+                                onClose: _closeWindow,
+                              ),
+                              _PlayerWindow.inventory => InventoryMenu(
+                                inventory: _player.inventory,
+                                onClose: _closeWindow,
+                              ),
+                            },
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
         ),
       ),
     );
@@ -413,27 +481,59 @@ class _ExplorationPageState extends State<ExplorationPage> {
             AnimatedPositioned(
               duration: const Duration(milliseconds: 150),
               curve: Curves.easeInOut,
-              // Do not clamp the camera at world edges: the player stays centered.
               left: playerLeft - _column * tile,
               top: playerTop - _row * tile,
               width: cells * tile,
               height: cells * tile,
-              child: PixelAtlasBuilder(
-                atlas: _groundAtlas,
-                builder: (context, image, error) => CustomPaint(
-                  key: const ValueKey('world-grid'),
-                  painter: _GroundPainter(cells, image),
-                  foregroundPainter: _FloorPainter(cells, _column, _row),
-                  child: Stack(
-                    children: [
-                      Positioned.fill(
+              child: SizedBox(
+                key: const ValueKey('world-grid'),
+                child: WorldLayers(
+                  entries: [
+                    WorldEntry(
+                      z: WorldZ.ground,
+                      child: Positioned.fill(
+                        child: PixelAtlasBuilder(
+                          atlas: _groundAtlas,
+                          builder: (context, image, error) => CustomPaint(
+                            painter: _GroundPainter(cells, image),
+                          ),
+                        ),
+                      ),
+                    ),
+                    WorldEntry(
+                      z: WorldZ.road,
+                      child: Positioned.fill(
                         child: PixelAtlasBuilder(
                           atlas: SunderedKeepUi.theme.atlas,
                           builder: (context, image, error) =>
                               CustomPaint(painter: _VillagePainter(image)),
                         ),
                       ),
-                      Positioned(
+                    ),
+                    for (final building in crescaBuildings)
+                      for (var y = 0; y < building.bounds.height; y++)
+                        for (var x = 0; x < building.bounds.width; x++)
+                          WorldEntry(
+                            z: y == 0 ? building.roofZ : building.wallZ,
+                            depth: building.footprint.bottom,
+                            child: Positioned(
+                              key: ValueKey('house-${building.id}-$x-$y'),
+                              left: (building.bounds.left + x) * tile,
+                              top: (building.bounds.top + y) * tile,
+                              width: tile,
+                              height: tile,
+                              child: Image.asset(
+                                'assets/overworld/cottage/tile_${y}_$x.png',
+                                filterQuality: FilterQuality.none,
+                                fit: BoxFit.fill,
+                                excludeFromSemantics: true,
+                              ),
+                            ),
+                          ),
+                    WorldEntry(
+                      z: WorldZ.actor,
+                      depth: npcRow + 1,
+                      child: Positioned(
                         left: npcColumn * tile,
                         top: npcRow * tile,
                         width: tile,
@@ -447,32 +547,48 @@ class _ExplorationPageState extends State<ExplorationPage> {
                           semanticLabel: 'Cresca villager',
                         ),
                       ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            Positioned(
-              left: playerLeft,
-              top: playerTop,
-              width: tile,
-              height: tile,
-              child: Semantics(
-                label: 'Player at column ${_column + 1}, row ${_row + 1}',
-                child: Container(
-                  key: const ValueKey('player'),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF886345).withValues(alpha: .5),
-                    border: Border.all(color: _gold.withValues(alpha: .7)),
-                  ),
-                  child: Transform.flip(
-                    flipX: _faceLeft,
-                    child: Image.asset(
-                      _sprite,
-                      filterQuality: FilterQuality.none,
-                      fit: BoxFit.contain,
                     ),
-                  ),
+                    WorldEntry(
+                      z: WorldZ.actor,
+                      depth: _row + 1,
+                      // Equal and opposite camera/actor tweens keep the player
+                      // centered even mid-step, inside the shared world layers.
+                      child: AnimatedPositioned(
+                        key: const ValueKey('player-position'),
+                        duration: const Duration(milliseconds: 150),
+                        curve: Curves.easeInOut,
+                        left: _column * tile,
+                        top: _row * tile,
+                        width: tile,
+                        height: tile,
+                        child: Semantics(
+                          label:
+                              'Player at column ${_column + 1}, row ${_row + 1}',
+                          child: SizedBox(
+                            key: const ValueKey('player'),
+                            child: Transform.flip(
+                              flipX: _faceLeft,
+                              child: Image.asset(
+                                _sprite,
+                                filterQuality: FilterQuality.none,
+                                fit: BoxFit.contain,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    WorldEntry(
+                      z: WorldZ.atmosphere,
+                      child: Positioned.fill(
+                        child: IgnorePointer(
+                          child: CustomPaint(
+                            painter: _FloorPainter(cells, _column, _row),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -535,13 +651,13 @@ class _GroundPainter extends CustomPainter {
       );
       return;
     }
-    // Each logical movement cell contains four 16x16 art tiles.
-    final artTile = size.width / cells / 2;
+    // One 16x16 source image fills each logical movement cell.
+    final artTile = size.width / cells;
     final paint = Paint()
       ..filterQuality = FilterQuality.none
       ..isAntiAlias = false;
-    for (var y = 0; y < cells * 2; y++) {
-      for (var x = 0; x < cells * 2; x++) {
+    for (var y = 0; y < cells; y++) {
+      for (var x = 0; x < cells; x++) {
         canvas.drawImageRect(
           texture,
           const Rect.fromLTWH(0, 0, 16, 16),
@@ -550,7 +666,7 @@ class _GroundPainter extends CustomPainter {
         );
       }
     }
-    final movementTile = artTile * 2;
+    final movementTile = artTile;
     paint.color = Colors.black.withValues(alpha: .2);
     for (var y = 0; y < cells; y++) {
       for (var x = 0; x < cells; x++) {
@@ -583,7 +699,7 @@ class _VillagePainter extends CustomPainter {
     final atlas = image;
     if (atlas == null) return;
     final tile = size.width / 20;
-    final artTile = tile / 2;
+    final artTile = tile;
     final paint = Paint()..filterQuality = FilterQuality.none;
     void stamp(int sx, int sy, double x, double y, {int height = 1}) {
       canvas.drawImageRect(
@@ -597,16 +713,7 @@ class _VillagePainter extends CustomPainter {
     for (var y = 0; y < 20; y++) {
       for (var x = 0; x < 20; x++) {
         if (!isRoadTile(x, y)) continue;
-        for (var dy = 0; dy < 2; dy++) {
-          for (var dx = 0; dx < 2; dx++) {
-            stamp(
-              4 + (x + dx) % 2,
-              1,
-              x * tile + dx * artTile,
-              y * tile + dy * artTile,
-            );
-          }
-        }
+        stamp(4 + x % 2, 1, x * tile, y * tile);
         if ((x + y).isEven) {
           canvas.drawRect(
             Rect.fromLTWH(x * tile, y * tile, tile, tile),
@@ -614,49 +721,6 @@ class _VillagePainter extends CustomPainter {
           );
         }
       }
-    }
-    for (final house in crescaHouses) {
-      final left = house.left * tile;
-      final top = house.top * tile;
-      // Six by six art tiles form each cottage; three rows of roof above
-      // brick walls, inset windows and a closed two-tile wooden door.
-      for (var y = 3; y < 6; y++) {
-        for (var x = 0; x < 6; x++) {
-          stamp(1, 1, left + x * artTile, top + y * artTile);
-        }
-      }
-      // The atlas's diagonal timbers form continuous gable edges. Fill the
-      // roof with darkened brick tiles, clipped to the same triangular outline.
-      canvas.save();
-      canvas.clipPath(
-        Path()
-          ..moveTo(left, top + 3 * artTile)
-          ..lineTo(left + 3 * artTile, top)
-          ..lineTo(left + 6 * artTile, top + 3 * artTile)
-          ..close(),
-      );
-      paint.colorFilter = const ColorFilter.mode(
-        Color(0xFF70545C),
-        BlendMode.modulate,
-      );
-      for (var y = 0; y < 3; y++) {
-        for (var x = 0; x < 6; x++) {
-          stamp(1, 1, left + x * artTile, top + y * artTile);
-        }
-      }
-      paint.colorFilter = null;
-      canvas.restore();
-      for (var y = 0; y < 3; y++) {
-        stamp(3, 5, left + (2 - y) * artTile, top + y * artTile);
-        canvas.save();
-        canvas.translate(left + (4 + y) * artTile, top + y * artTile);
-        canvas.scale(-1, 1);
-        stamp(3, 5, 0, 0);
-        canvas.restore();
-      }
-      stamp(0, 7, left + artTile, top + 3 * artTile);
-      stamp(0, 7, left + 4 * artTile, top + 3 * artTile);
-      stamp(2, 9, left + 2 * artTile, top + 4 * artTile, height: 2);
     }
   }
 

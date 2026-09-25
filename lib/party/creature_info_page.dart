@@ -26,6 +26,7 @@ class _CreatureInfoPageState extends State<CreatureInfoPage> {
   Future<void> _rename() async {
     final name = await showDialog<String>(
       context: context,
+      useRootNavigator: false,
       builder: (context) => Theme(
         data: _sourceTheme(context),
         child: _RenameDialog(name: _name),
@@ -68,6 +69,7 @@ class _CreatureInfoPageState extends State<CreatureInfoPage> {
   Future<void> _changeMove(int slot) async {
     final choice = await showDialog<String>(
       context: context,
+      useRootNavigator: false,
       builder: (context) => Theme(
         data: _sourceTheme(context),
         child: Dialog(
@@ -592,7 +594,7 @@ class _InfoSection extends StatefulWidget {
 }
 
 class _InfoSectionState extends State<_InfoSection> {
-  bool expanded = true;
+  bool expanded = false;
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.only(bottom: 12),

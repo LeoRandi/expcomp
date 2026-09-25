@@ -55,6 +55,14 @@ void main() {
 
       await tester.tap(find.text('Open'));
       await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('plus-CON')), findsNothing);
+      expect(find.text('No item equipped.'), findsNothing);
+      expect(find.byKey(const ValueKey('section-moves')), findsNothing);
+      await tapKey('section-abilities');
+      expect(find.byKey(const ValueKey('change-move-0')), findsNothing);
+      expect(find.textContaining('Self Repair'), findsNothing);
+      await tapKey('section-moves');
+      await tapKey('section-stats');
       expect(
         PixelUiThemeData.of(
           tester.element(find.byKey(const ValueKey('info-save'))),
@@ -153,6 +161,9 @@ void main() {
 
       await tester.tap(find.text('Open'));
       await tester.pumpAndSettle();
+      await tapKey('section-stats');
+      await tapKey('section-abilities');
+      await tapKey('section-moves');
       await tapKey('plus-CON');
       await tapKey('change-move-0');
       await tester.scrollUntilVisible(

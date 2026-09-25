@@ -80,6 +80,10 @@ void main() {
         ]) {
           expect(find.byKey(ValueKey(key)), findsNothing);
         }
+        expect(find.byKey(const ValueKey('combat-total-PRO')), findsNothing);
+        await tester.ensureVisible(find.byKey(const ValueKey('section-stats')));
+        await tester.tap(find.byKey(const ValueKey('section-stats')));
+        await settle();
         if (i == 0 || i == 2) {
           final modifier = tester.widget<Text>(
             find.byKey(const ValueKey('combat-delta-PRO')),
