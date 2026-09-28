@@ -1,6 +1,14 @@
 import 'dart:ui';
 import 'world_layers.dart';
 
+/// Decorative standing torches beside the testing area's paths.
+const crescaTorches = [
+  Offset(6, 11),
+  Offset(14, 9),
+  Offset(8, 4),
+  Offset(11, 16),
+];
+
 class MapBuilding {
   const MapBuilding({
     required this.id,

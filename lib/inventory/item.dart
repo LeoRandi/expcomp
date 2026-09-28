@@ -17,6 +17,8 @@ class Item {
     required this.icon,
     required this.category,
     this.effectText = '',
+    this.constitutionBonus = 0,
+    this.speedBonus = 0,
   });
 
   final String id;
@@ -24,6 +26,13 @@ class Item {
   final ItemIcon icon;
   final ItemCategory category;
   final String effectText;
+  final int constitutionBonus;
+  final int speedBonus;
+
+  Map<String, int> get statBonuses => {
+    'CON': constitutionBonus,
+    'SPE': speedBonus,
+  };
 
   @override
   bool operator ==(Object other) => other is Item && other.id == id;
@@ -43,4 +52,7 @@ const moonlessNecklace = Item(
   name: 'Moonless necklace',
   icon: ItemIcon.necklace,
   category: ItemCategory.equipment,
+  effectText: '+5 Constitution and +5 Speed while equipped.',
+  constitutionBonus: 5,
+  speedBonus: 5,
 );

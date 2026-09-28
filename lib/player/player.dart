@@ -1,5 +1,5 @@
 import '../inventory/inventory.dart';
-import '../inventory/item.dart';
+import '../inventory/item_catalog.dart';
 
 class Player {
   Player({this.name = 'Youngest of Cresca', Inventory? inventory})

@@ -28,6 +28,15 @@ of those wall rows. Front edges remain at the roads. All house pieces come from 
 The player participates in the world stack. Matching, opposite camera and actor
 animations keep the player centered while scenery moves behind and above it.
 The player has no opaque debug tile background.
+Four decorative torch sprites are positioned by `crescaTorches` in
+`lib/exploration/cresca_map.dart` and depth-sorted in the actor layer.
+The atmosphere uses `worldDarknessAt` for both the player and torches: circular
+rings use Euclidean distance between tile centers. Distances below 3 are clear,
+3 to below 4 / 4 to below 5 / 5 to below 6 have opacity 0.5/0.75/0.9,
+and 6+ is opaque. Entire tiles are shaded, preserving a stepped pixel-art edge.
+The nearest source determines visibility, so overlapping lights
+never darken each other and torches stay lit when the player walks away.
+The torch PNG is generated pixel art with transparency.
 House artwork comes exclusively from the existing Outdoors tileset;
 tools/build_cottage_tiles.ps1 reproducibly assembles the individual PNGs.
 

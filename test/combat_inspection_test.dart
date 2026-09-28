@@ -60,8 +60,8 @@ void main() {
       }
 
       await settle();
-      roster[0].prowess = roster[0].stats.pro + 5.0;
-      roster[2].prowess = roster[2].stats.pro - 5.0;
+      roster[0].changeStat('PRO', 5, source: 'POWERIDE');
+      roster[2].changeStat('PRO', -5, source: 'POWERIDE');
       for (var i = 0; i < roster.length; i++) {
         await tester.longPress(find.byKey(ValueKey(roster[i].id)));
         await settle();
@@ -86,13 +86,17 @@ void main() {
         await settle();
         if (i == 0 || i == 2) {
           final modifier = tester.widget<Text>(
-            find.byKey(const ValueKey('combat-delta-PRO')),
+            find.byKey(const ValueKey('combat-total-PRO')),
           );
-          expect(modifier.data, i == 0 ? '+5' : '-5');
           expect(
             modifier.style!.color,
             i == 0 ? Colors.greenAccent : Colors.redAccent,
           );
+          await tester.tap(find.byKey(const ValueKey('stat-info-PRO')));
+          await settle();
+          expect(find.text('POWERIDE'), findsOneWidget);
+          await tester.tap(find.byKey(const ValueKey('close-stat-dialog')));
+          await settle();
         }
         await tester.tap(find.byKey(const ValueKey('info-back')));
         await settle();

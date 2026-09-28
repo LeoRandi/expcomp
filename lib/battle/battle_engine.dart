@@ -4,6 +4,7 @@ import '../creatures/showcase_party.dart';
 import 'battle_move.dart';
 import 'turn_order.dart';
 import '../creatures/innate_ability.dart';
+import '../inventory/item.dart';
 
 enum BattleSide { allies, enemies }
 
@@ -21,6 +22,9 @@ class BattleCreature {
     this.source = CreatureSource.sunderkeep,
     this.innate,
     this.species,
+    this.equippedItem,
+    this.baseStats,
+    this.allocatedPoints = const {},
   }) : hp = currentHp ?? stats.maxHp,
        prowess = stats.pro.toDouble(),
        magicalProwess = stats.mpr.toDouble(),
@@ -29,6 +33,9 @@ class BattleCreature {
        criticalChance = stats.cri,
        criticalEvasion = stats.eva;
   final CreatureSpecies? species;
+  final Item? equippedItem;
+  final CreatureStats? baseStats;
+  final Map<String, int> allocatedPoints;
   final CreatureSource source;
   final int level;
   final InnateAbility? innate;
@@ -60,6 +67,45 @@ class BattleCreature {
   double magicalResistance;
   bool flameWardActive = false;
   bool get alive => hp > 0;
+
+  final Map<String, Map<String, int>> _statChanges = {};
+
+  /// Net displayed change per stat and named move/ability, isolated per battle.
+  Map<String, Map<String, int>> get statChanges => Map.unmodifiable({
+    for (final entry in _statChanges.entries)
+      entry.key: Map<String, int>.unmodifiable(entry.value),
+  });
+
+  /// Apply and attribute the actual change after stat floors/caps and rounding.
+  void changeStat(String stat, num amount, {required String source}) {
+    final before = combatStats[stat];
+    switch (stat) {
+      case 'PRO':
+        prowess = max(0.0, prowess + amount);
+      case 'MPR':
+        magicalProwess = max(0.0, magicalProwess + amount);
+      case 'RES':
+        resistance = max(0.0, resistance + amount);
+      case 'MRE':
+        magicalResistance = max(0.0, magicalResistance + amount);
+      case 'CRI':
+        criticalChance = (criticalChance + amount).round().clamp(0, 100);
+      case 'EVA':
+        criticalEvasion = (criticalEvasion + amount).round().clamp(0, 100);
+      default:
+        throw ArgumentError.value(stat, 'stat', 'Unsupported combat stat');
+    }
+    final delta = combatStats[stat]! - before!;
+    if (delta == 0) return;
+    final sources = _statChanges.putIfAbsent(stat, () => {});
+    final net = (sources[source] ?? 0) + delta;
+    if (net == 0) {
+      sources.remove(source);
+      if (sources.isEmpty) _statChanges.remove(stat);
+    } else {
+      sources[source] = net;
+    }
+  }
 }
 
 class BattleAction {
@@ -96,6 +142,9 @@ List<BattleCreature> createShowcaseBattle() => [
       moves: showcaseParty[i].equippedMoves.whereType<BattleMove>().toList(),
       level: showcaseParty[i].level,
       innate: showcaseParty[i].species.innate,
+      equippedItem: showcaseParty[i].equippedItem,
+      baseStats: showcaseParty[i].baseStats,
+      allocatedPoints: showcaseParty[i].extraPoints,
     ),
   for (var i = 0; i < 2; i++)
     BattleCreature(
@@ -241,7 +290,7 @@ List<BattleResult> resolveAction(
             target.resistance,
             (user.prowess * .1).roundToDouble(),
           );
-          target.resistance -= amount;
+          target.changeStat('RES', -amount, source: move.name);
           note = 'RES -${amount.toInt()}';
         }
       case MoveEffect.magicalResistanceDrop:
@@ -250,7 +299,7 @@ List<BattleResult> resolveAction(
             target.magicalResistance,
             (user.magicalProwess * .1).roundToDouble(),
           );
-          target.magicalResistance -= amount;
+          target.changeStat('MRE', -amount, source: move.name);
           note = 'MRE -${amount.toInt()}';
         }
       case MoveEffect.flameWard:
@@ -264,14 +313,14 @@ List<BattleResult> resolveAction(
         target.hp += healing;
       case MoveEffect.powerTransfer:
         final amount = min(target.prowess, transferAmount);
-        target.prowess -= amount;
+        target.changeStat('PRO', -amount, source: move.name);
         totalTransferred += amount;
         note = 'PRO -${amount.toInt()}';
     }
     results.add(BattleResult(target, damage, healing: healing, note: note));
   }
   if (move.effect == MoveEffect.powerTransfer && user.alive) {
-    user.prowess += totalTransferred;
+    user.changeStat('PRO', totalTransferred, source: move.name);
     results.add(
       BattleResult(user, 0, note: 'PRO +${totalTransferred.toInt()}'),
     );
@@ -303,7 +352,11 @@ void enterCombat(List<BattleCreature> roster) {
       for (final enemy in roster.where(
         (c) => c.alive && c.side != creature.side,
       )) {
-        enemy.prowess -= (enemy.prowess * .25).round();
+        enemy.changeStat(
+          'PRO',
+          -(enemy.prowess * .25).round(),
+          source: creature.innate!.name,
+        );
       }
     }
   }
@@ -374,9 +427,9 @@ void beginRound(List<BattleCreature> roster, Random random) {
     final increaseCritical = random.nextBool();
     for (final ally in roster.where((c) => c.alive && c.side == bearer.side)) {
       if (increaseCritical) {
-        ally.criticalChance = min(100, ally.criticalChance + 5);
+        ally.changeStat('CRI', 5, source: bearer.innate!.name);
       } else {
-        ally.criticalEvasion = min(100, ally.criticalEvasion + 5);
+        ally.changeStat('EVA', 5, source: bearer.innate!.name);
       }
     }
   }

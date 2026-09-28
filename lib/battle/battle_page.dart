@@ -75,7 +75,11 @@ class _BattlePageState extends State<BattlePage> {
               child: CreatureInfoPage(
                 creature: snapshot,
                 readOnly: true,
+                equippedItem: combatant.equippedItem,
+                baseStats: combatant.baseStats,
+                allocatedPoints: combatant.allocatedPoints,
                 combatStats: combatant.combatStats,
+                statChanges: combatant.statChanges,
               ),
             ),
           ),

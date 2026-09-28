@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../battle/battle_move.dart';
 import '../creatures/creature.dart';
 import '../global_presentation/pixel_ui/pixel_ui.dart';
+import '../inventory/item_icon.dart';
+import '../inventory/item.dart';
 import 'creature_source_theme.dart';
 
 class CreatureInfoPage extends StatefulWidget {
@@ -10,10 +12,20 @@ class CreatureInfoPage extends StatefulWidget {
     required this.creature,
     this.readOnly = false,
     this.combatStats = const {},
+    this.equippedItem,
+    this.baseStats,
+    this.allocatedPoints,
+    this.statChanges = const {},
   });
   final bool readOnly;
   final Map<String, int> combatStats;
   final Creature creature;
+
+  /// Combat snapshots already include bonuses in their stats.
+  final Item? equippedItem;
+  final CreatureStats? baseStats;
+  final Map<String, int>? allocatedPoints;
+  final Map<String, Map<String, int>> statChanges;
   @override
   State<CreatureInfoPage> createState() => _CreatureInfoPageState();
 }
@@ -148,6 +160,7 @@ class _CreatureInfoPageState extends State<CreatureInfoPage> {
   @override
   Widget build(BuildContext context) {
     final creature = widget.creature;
+    final equippedItem = widget.equippedItem ?? creature.equippedItem;
     return Theme(
       data: _sourceTheme(context),
       child: DefaultTextStyle(
@@ -233,7 +246,7 @@ class _CreatureInfoPageState extends State<CreatureInfoPage> {
                                     Text(
                                       widget.readOnly
                                           ? 'HP: ${creature.currentHp}/${creature.maxHp}'
-                                          : 'Max HP: ${creature.baseStats.withExtra(_points).maxHp}',
+                                          : 'Max HP: ${creature.statsWithPoints(_points).maxHp}',
                                     ),
                                   ],
                                 ),
@@ -241,10 +254,24 @@ class _CreatureInfoPageState extends State<CreatureInfoPage> {
                             ],
                           ),
                           const SizedBox(height: 12),
-                          const _InfoSection(
+                          _InfoSection(
                             id: 'item',
                             title: 'EQUIPPED ITEM',
-                            child: _Frame(child: Text('No item equipped.')),
+                            child: _Frame(
+                              child: equippedItem == null
+                                  ? const Text('No item equipped.')
+                                  : Row(
+                                      children: [
+                                        ItemIconView(item: equippedItem),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Text(
+                                            '${equippedItem.name}\n${equippedItem.effectText}',
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                            ),
                           ),
                           _InfoSection(
                             id: 'stats',
@@ -372,83 +399,195 @@ class _CreatureInfoPageState extends State<CreatureInfoPage> {
     );
   }
 
-  Widget _statRow(String stat) {
-    final extra = _points[stat] ?? 0;
-    final base = widget.creature.baseStats.values[stat]!;
-    if (widget.readOnly) {
-      final delta = (widget.combatStats[stat] ?? base) - base;
-      return _Frame(
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                '$stat: ${widget.combatStats[stat]?.toString()}',
-                key: ValueKey('combat-total-$stat'),
-                style: TextStyle(
-                  fontSize: PixelUiMetrics.body,
-                  color: delta > 0
-                      ? Colors.greenAccent
-                      : delta < 0
-                      ? Colors.redAccent
-                      : themeForSource(widget.creature.source).palette.ink,
+  Future<void> _showStatBreakdown(
+    String stat,
+    int total,
+    int base,
+    int allocating,
+    int equipment,
+  ) => showDialog<void>(
+    context: context,
+    useRootNavigator: false,
+    builder: (context) => Theme(
+      data: _sourceTheme(context),
+      child: Dialog(
+        key: ValueKey('stat-dialog-$stat'),
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(16),
+        child: SizedBox(
+          width: 360,
+          height: 320,
+          child: PixelPanel.expanded(
+            role: PixelSurfaceRole.dialog,
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      key: ValueKey('stat-breakdown-$stat'),
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _statContribution('base', base),
+                        _statContribution(
+                          'allocating',
+                          allocating,
+                          signed: true,
+                        ),
+                        _statContribution('Equipment', equipment, signed: true),
+                        for (final source
+                            in (widget.statChanges[stat] ??
+                                    const <String, int>{})
+                                .entries)
+                          if (source.value != 0)
+                            _statContribution(
+                              source.key,
+                              source.value,
+                              signed: true,
+                            ),
+                      ],
+                    ),
+                  ),
                 ),
-              ),
+                Divider(
+                  color: themeForSource(widget.creature.source).palette.mutedInk,
+                  thickness: 1,
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Text(
+                    '$total',
+                    key: ValueKey('stat-breakdown-total-$stat'),
+                    textAlign: TextAlign.right,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+                PixelButton(
+                  key: const ValueKey('close-stat-dialog'),
+                  label: 'CLOSE',
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+              ],
             ),
-            if (delta != 0)
-              Text(
-                '$base' + (delta > 0 ? '+$delta' : '$delta'),
-                key: ValueKey('combat-delta-$stat'),
-                style: TextStyle(
-                  fontSize: PixelUiMetrics.body,
-                  color: delta > 0
-                      ? Colors.greenAccent
-                      : delta < 0
-                      ? Colors.redAccent
-                      : themeForSource(widget.creature.source).palette.mutedInk,
-                ),
-              ),
+          ),
+        ),
+      ),
+    ),
+  );
+
+  Widget _statContribution(String label, int value, {bool signed = false}) =>
+      Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(child: Text(label)),
+            const SizedBox(width: 12),
+            Text(signed && value > 0 ? '+$value' : '$value'),
           ],
         ),
       );
-    }
 
+  Widget _statRow(String stat) {
+    final extra = widget.readOnly
+        ? (widget.allocatedPoints ?? widget.creature.extraPoints)[stat] ?? 0
+        : _points[stat] ?? 0;
+    final base = (widget.baseStats ?? widget.creature.baseStats).values[stat]!;
+    final equipment =
+        (widget.equippedItem ?? widget.creature.equippedItem)
+            ?.statBonuses[stat] ??
+        0;
+    final total = widget.readOnly
+        ? widget.combatStats[stat] ?? widget.creature.stats.values[stat]!
+        : base + extra + equipment;
+    final delta = widget.readOnly ? total - base - extra - equipment : 0;
+    final palette = themeForSource(widget.creature.source).palette;
+    final modified =
+        extra != 0 ||
+        equipment != 0 ||
+        delta != 0 ||
+        (widget.statChanges[stat]?.values.any((value) => value != 0) ?? false);
+    final infoColor = modified ? palette.accent : const Color(0xFFB0B0B0);
     return _Frame(
       child: Row(
         children: [
           Expanded(
-            child: Text(
-              '$stat: $base + $extra',
-              style: const TextStyle(fontSize: PixelUiMetrics.body),
+            child: Row(
+              children: [
+                Flexible(
+                  child: Text(
+                    '$stat: $total',
+                    key: ValueKey(
+                      widget.readOnly
+                          ? 'combat-total-$stat'
+                          : 'stat-total-$stat',
+                    ),
+                    style: TextStyle(
+                      fontSize: PixelUiMetrics.body,
+                      color: delta > 0
+                          ? Colors.greenAccent
+                          : delta < 0
+                          ? Colors.redAccent
+                          : palette.ink,
+                    ),
+                  ),
+                ),
+                TextButton(
+                  key: ValueKey('stat-info-$stat'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: infoColor,
+                    backgroundColor: Colors.transparent,
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    minimumSize: const Size(0, 40),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    textStyle: const TextStyle(
+                      fontSize: PixelUiMetrics.body,
+                      decoration: TextDecoration.underline,
+                    ),
+                  ),
+                  onPressed: () =>
+                      _showStatBreakdown(stat, total, base, extra, equipment),
+                  child: Text(
+                    '(?)',
+                    semanticsLabel: '$stat stat breakdown',
+                    style: TextStyle(decorationColor: infoColor),
+                  ),
+                ),
+              ],
             ),
           ),
-          SizedBox(
-            width: 40,
-            height: 40,
-            child: PixelButton(
-              key: ValueKey('minus-$stat'),
-              tileExtent: PixelUiMetrics.mediumBorder,
-              role: PixelSurfaceRole.inset,
-              label: '-',
-              expandToFill: true,
-              onPressed: extra == 0 ? null : () => _changePoint(stat, -1),
+          if (!widget.readOnly) ...[
+            SizedBox(
+              width: 40,
+              height: 40,
+              child: PixelButton(
+                key: ValueKey('minus-$stat'),
+                tileExtent: PixelUiMetrics.mediumBorder,
+                role: PixelSurfaceRole.inset,
+                label: '-',
+                expandToFill: true,
+                onPressed: extra == 0 ? null : () => _changePoint(stat, -1),
+              ),
             ),
-          ),
-          SizedBox(
-            width: 40,
-            height: 40,
-            child: PixelButton(
-              key: ValueKey('plus-$stat'),
-              tileExtent: PixelUiMetrics.mediumBorder,
-              role: PixelSurfaceRole.inset,
-              label: '+',
-              expandToFill: true,
-              onPressed:
-                  _allocated >= widget.creature.pointBudget ||
-                      ((stat == 'CRI' || stat == 'EVA') && base + extra >= 100)
-                  ? null
-                  : () => _changePoint(stat, 1),
+            SizedBox(
+              width: 40,
+              height: 40,
+              child: PixelButton(
+                key: ValueKey('plus-$stat'),
+                tileExtent: PixelUiMetrics.mediumBorder,
+                role: PixelSurfaceRole.inset,
+                label: '+',
+                expandToFill: true,
+                onPressed:
+                    _allocated >= widget.creature.pointBudget ||
+                        ((stat == 'CRI' || stat == 'EVA') &&
+                            base + extra >= 100)
+                    ? null
+                    : () => _changePoint(stat, 1),
+              ),
             ),
-          ),
+          ],
         ],
       ),
     );

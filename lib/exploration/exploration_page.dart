@@ -9,8 +9,10 @@ import '../battle/battle_page.dart';
 import '../party/party_menu.dart';
 import '../inventory/inventory_menu.dart';
 import '../player/player.dart';
+import '../creatures/showcase_party.dart';
 import 'cresca_map.dart';
 import 'world_layers.dart';
+import 'world_lighting.dart';
 
 enum _PlayerWindow { player, party, inventory }
 
@@ -452,6 +454,7 @@ class _ExplorationPageState extends State<ExplorationPage> {
                               ),
                               _PlayerWindow.inventory => InventoryMenu(
                                 inventory: _player.inventory,
+                                party: showcaseParty,
                                 onClose: _closeWindow,
                               ),
                             },
@@ -510,6 +513,26 @@ class _ExplorationPageState extends State<ExplorationPage> {
                         ),
                       ),
                     ),
+                    for (final torch in crescaTorches)
+                      WorldEntry(
+                        z: WorldZ.actor,
+                        depth: torch.dy + 1,
+                        child: Positioned(
+                          key: ValueKey(
+                            'torch-${torch.dx.toInt()}-${torch.dy.toInt()}',
+                          ),
+                          left: torch.dx * tile,
+                          top: torch.dy * tile,
+                          width: tile,
+                          height: tile,
+                          child: Image.asset(
+                            'assets/overworld/torch.png',
+                            filterQuality: FilterQuality.none,
+                            fit: BoxFit.contain,
+                            semanticLabel: 'Lit torch',
+                          ),
+                        ),
+                      ),
                     for (final building in crescaBuildings)
                       for (var y = 0; y < building.bounds.height; y++)
                         for (var x = 0; x < building.bounds.width; x++)
@@ -738,20 +761,13 @@ class _FloorPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final tile = size.width / cells;
     final paint = Paint();
+    final lights = [
+      Offset(playerColumn.toDouble(), playerRow.toDouble()),
+      ...crescaTorches,
+    ];
     for (var y = 0; y < cells; y++) {
       for (var x = 0; x < cells; x++) {
-        // Square rings: diagonal neighbors count as one tile away, too.
-        final distance = math.max(
-          (x - playerColumn).abs(),
-          (y - playerRow).abs(),
-        );
-        final darkness = switch (distance) {
-          < 4 => 0.0,
-          4 => 0.5,
-          5 => 0.75,
-          6 => 0.9,
-          _ => 1.0,
-        };
+        final darkness = worldDarknessAt(x, y, lights);
         if (darkness > 0) {
           paint.color = Colors.black.withValues(alpha: darkness);
           canvas.drawRect(Rect.fromLTWH(x * tile, y * tile, tile, tile), paint);

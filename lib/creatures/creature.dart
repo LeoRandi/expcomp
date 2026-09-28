@@ -1,4 +1,6 @@
 import '../battle/battle_move.dart';
+import '../inventory/inventory.dart';
+import '../inventory/item.dart';
 import 'innate_ability.dart';
 
 enum CreatureSource {
@@ -107,7 +109,42 @@ class Creature {
   Map<String, int> get extraPoints => Map.unmodifiable(_extra);
   List<BattleMove?> get equippedMoves => List.unmodifiable(_equippedMoves);
   int get pointBudget => level * 10;
-  CreatureStats get stats => baseStats.withExtra(_extra);
+  Item? _equippedItem;
+  Item? get equippedItem => _equippedItem;
+  CreatureStats get stats => statsWithPoints(_extra);
+
+  /// Equipment is independent of the creature's point allocation budget.
+  CreatureStats statsWithPoints(Map<String, int> points) => baseStats
+      .withExtra(points)
+      .withExtra(_equippedItem?.statBonuses ?? const {});
+
+  /// One equipment slot. Swapping returns the previous item to the same bag.
+  bool equipFrom(Inventory inventory, Item item) {
+    if (item.category != ItemCategory.equipment ||
+        _equippedItem == item ||
+        !inventory.remove(item)) {
+      return false;
+    }
+    final previous = _equippedItem;
+    _setEquippedItem(item);
+    if (previous != null) inventory.add(previous);
+    return true;
+  }
+
+  bool unequipTo(Inventory inventory) {
+    final previous = _equippedItem;
+    if (previous == null) return false;
+    _setEquippedItem(null);
+    inventory.add(previous);
+    return true;
+  }
+
+  void _setEquippedItem(Item? item) {
+    final missingHp = maxHp - currentHp;
+    _equippedItem = item;
+    // Preserve damage taken and never revive a knocked-out companion.
+    if (currentHp > 0) currentHp = (maxHp - missingHp).clamp(1, maxHp);
+  }
 
   void saveBuild(
     Map<String, int> points,

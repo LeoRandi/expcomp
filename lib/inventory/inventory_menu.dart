@@ -1,17 +1,22 @@
 import 'package:flutter/material.dart';
 
+import '../creatures/creature.dart';
 import '../global_presentation/pixel_ui/pixel_ui.dart';
 import 'inventory.dart';
 import 'item.dart';
+import 'item_dialog.dart';
+import 'item_icon.dart';
 
 class InventoryMenu extends StatefulWidget {
   const InventoryMenu({
     super.key,
     required this.inventory,
+    required this.party,
     required this.onClose,
   });
 
   final Inventory inventory;
+  final List<Creature> party;
   final VoidCallback onClose;
 
   @override
@@ -20,6 +25,19 @@ class InventoryMenu extends StatefulWidget {
 
 class _InventoryMenuState extends State<InventoryMenu> {
   ItemCategory _category = ItemCategory.items;
+
+  Future<void> _showItem(Item item) async {
+    await showDialog<bool>(
+      context: context,
+      useRootNavigator: false,
+      builder: (_) => ItemDialog(
+        item: item,
+        inventory: widget.inventory,
+        party: widget.party,
+      ),
+    );
+    if (mounted) setState(() {});
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -60,55 +78,43 @@ class _InventoryMenuState extends State<InventoryMenu> {
                               ),
                               itemBuilder: (context, index) {
                                 final entry = entries[index];
-                                return SizedBox(
+                                return InkWell(
                                   key: ValueKey(
                                     'inventory-item-${entry.key.id}',
                                   ),
-                                  height: 64,
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 8,
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        SizedBox.square(
-                                          dimension: 48,
-                                          child: PixelPanel.expanded(
-                                            role: PixelSurfaceRole.inset,
-                                            tileExtent: 8,
-                                            child: Icon(
-                                              switch (entry.key.icon) {
-                                                ItemIcon.meat =>
-                                                  Icons.kebab_dining,
-                                                ItemIcon.necklace =>
-                                                  Icons.diamond_outlined,
-                                              },
-                                              color: palette.accent,
-                                              size: 28,
+                                  onTap: () => _showItem(entry.key),
+                                  child: SizedBox(
+                                    height: 64,
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 8,
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          ItemIconView(item: entry.key),
+                                          const SizedBox(width: 12),
+                                          Expanded(
+                                            child: Text(
+                                              entry.key.name,
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: TextStyle(
+                                                color: palette.ink,
+                                                fontSize:
+                                                    PixelUiMetrics.caption,
+                                              ),
                                             ),
                                           ),
-                                        ),
-                                        const SizedBox(width: 12),
-                                        Expanded(
-                                          child: Text(
-                                            entry.key.name,
-                                            maxLines: 2,
-                                            overflow: TextOverflow.ellipsis,
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            'x${entry.value}',
                                             style: TextStyle(
                                               color: palette.ink,
                                               fontSize: PixelUiMetrics.caption,
                                             ),
                                           ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Text(
-                                          'x${entry.value}',
-                                          style: TextStyle(
-                                            color: palette.ink,
-                                            fontSize: PixelUiMetrics.caption,
-                                          ),
-                                        ),
-                                      ],
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 );
