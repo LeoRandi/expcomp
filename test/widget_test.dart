@@ -127,10 +127,10 @@ void main() {
     );
     await tester.tap(find.byIcon(Icons.close));
     await tester.pumpAndSettle();
-    expect(find.text('Youngest of Cresco'), findsOneWidget);
+    expect(find.text('Youngest of Cresca'), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('close-player-info')));
     await tester.pumpAndSettle();
-    expect(find.text('Youngest of Cresco'), findsNothing);
+    expect(find.text('Youngest of Cresca'), findsNothing);
     await tester.tap(find.byKey(const ValueKey('move-up')));
     await tester.pumpAndSettle();
     expect(find.text('Ready to meet your end?'), findsOneWidget);

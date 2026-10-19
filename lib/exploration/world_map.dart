@@ -131,7 +131,7 @@ const testingMap = ExplorationMap(
   npcs: [
     TownNpc(
       id: 'trainer',
-      name: 'Cresco Villager',
+      name: 'Cresca Villager',
       role: 'Sparring partner',
       position: Offset(10, 9),
       lines: ['Ready to meet your end?'],
@@ -145,7 +145,7 @@ const testingMap = ExplorationMap(
       asset: '${characterAssets}Wizard/wizard_8.png',
       tint: Color(0xFF9692B2),
       lines: [
-        'Enough practice? Take my hand. I will leave you outside your home in Cresco.',
+        'Enough practice? Take my hand. I will leave you outside your home in Cresca.',
       ],
       action: NpcAction.town,
     ),

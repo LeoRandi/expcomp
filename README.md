@@ -1,7 +1,7 @@
 # expcomp
 
 Flutter tile-based RPG prototype with the Sundered Keep pixel UI. The game opens
-in **Cresco**, the protagonist's underground hometown.
+in **Cresca**, the protagonist's underground hometown.
 
 ```sh
 flutter pub get
@@ -28,7 +28,7 @@ The provisional world outline is in [docs/story.md](docs/story.md). Town layout,
 residents and dialogue live in `lib/exploration/cresca_town.dart`; the original
 20×20 testing map remains in `cresca_map.dart`, with its NPCs in `world_map.dart`.
 
-Cresco sits in the middle of a 40×40 cavern, four times the testing area's surface.
+Cresca sits in the middle of a 40×40 cavern, four times the testing area's surface.
 Torches stand beside the cobblestone roads. Start outside your
 home and speak to the veiled stranger immediately to your right for transport to
 the testing grounds. Speak to the Waykeeper there to return home. The original

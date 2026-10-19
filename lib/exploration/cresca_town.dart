@@ -13,7 +13,7 @@ const crescaFarmBounds = Rect.fromLTWH(1, 10, 4, 5);
 // Town knowledge follows docs/story.md; individual residents are local additions.
 const crescaTown = ExplorationMap(
   area: WorldArea.town,
-  name: 'Cresco',
+  name: 'Cresca',
   subtitle: 'Your home • Keep to the torchlit streets',
   columns: 40,
   rows: 40,
@@ -228,8 +228,8 @@ const crescaTown = ExplorationMap(
       tint: Color(0xFFE2BB90),
       lines: [
         'Up already, youngest? I have been feeding this street since before you could reach my counter. Follow the smell of bread back home.',
-        'Nessa trades herbs for bread, and Ivo stops by after his lamp rounds. In Cresco, someone notices when you miss breakfast.',
-        'Cresco is the only safe place for miles. We still hear from the towns south and east, but anyone carrying supplies between us takes a risk.',
+        'Nessa trades herbs for bread, and Ivo stops by after his lamp rounds. In Cresca, someone notices when you miss breakfast.',
+        'Cresca is the only safe place for miles. We still hear from the towns south and east, but anyone carrying supplies between us takes a risk.',
       ],
     ),
     TownNpc(
@@ -309,7 +309,7 @@ const crescaTown = ExplorationMap(
       position: Offset(26, 19),
       tint: Color(0xFFBFC5DF),
       lines: [
-        'The Resting Lantern has a warm meal for anyone who reaches Cresco. Sit down; Pell will bring the supplies eventually.',
+        'The Resting Lantern has a warm meal for anyone who reaches Cresca. Sit down; Pell will bring the supplies eventually.',
         'We still get news from the south and east. Nothing from the north since the rumbling closed the routes.',
       ],
     ),

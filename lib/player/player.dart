@@ -2,7 +2,7 @@ import '../inventory/inventory.dart';
 import '../inventory/item_catalog.dart';
 
 class Player {
-  Player({this.name = 'Youngest of Cresco', Inventory? inventory})
+  Player({this.name = 'Youngest of Cresca', Inventory? inventory})
     : inventory = inventory ?? Inventory();
 
   factory Player.demo() =>

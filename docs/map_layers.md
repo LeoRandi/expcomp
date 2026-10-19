@@ -21,7 +21,7 @@ enterable doors will need an explicit interaction/transition.
 Every movement cell uses one 16 by 16 tile image per visual layer, drawn across
 the full cell. Ground and roads are no longer subdivided into 2 by 2 art tiles.
 
-Cresco's cottages occupy 3 by 3 visual cells, each using nine individual 16 by 16
+Cresca's cottages occupy 3 by 3 visual cells, each using nine individual 16 by 16
 RGBA PNGs. The top row renders overhead and is walkable; the bottom two rows
 are solid walls. A one-tile-wide, two-tile-tall door occupies the center column
 of those wall rows. Front edges remain at the roads. All house pieces come from the Outdoors tileset, with a blue roof, red timber walls and a wooden door.
@@ -91,7 +91,7 @@ Validation:
 - flutter test test/cresca_town_test.dart test/town_outskirts_test.dart
 - The outskirts tests write build/juntos-farm.png for visual review.
 - flutter test test/cresca_map_test.dart test/widget_test.dart test/world_layers_test.dart
-- The town test writes build/cresco-start.png and build/cresco-start-portrait.png.
+- The town test writes build/cresca-start.png and build/cresca-start-portrait.png.
 - The integration test writes build/cresca-behind-house.png for visual review.
 - Asset tests compare every tile pixel with the assembled source, including alpha.
 

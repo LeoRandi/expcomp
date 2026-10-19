@@ -147,7 +147,7 @@ void main() {
       expect(opacity(), allOf(greaterThan(0), lessThan(1)));
       await tester.pump(const Duration(milliseconds: 116));
       expect(title, findsNothing);
-      for (final area in ['Testing grounds', 'Cresco']) {
+      for (final area in ['Testing grounds', 'Cresca']) {
         await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
         await tester.pumpAndSettle();
         await tester.tap(find.byKey(const ValueKey('travel-npc')));
@@ -315,7 +315,7 @@ void main() {
       final image = await boundary.toImage();
       final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
       await File(
-        'build/cresco-start.png',
+        'build/cresca-start.png',
       ).writeAsBytes(bytes!.buffer.asUint8List());
       image.dispose();
     });
@@ -332,7 +332,7 @@ void main() {
       final image = await boundary.toImage();
       final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
       await File(
-        'build/cresco-start-portrait.png',
+        'build/cresca-start-portrait.png',
       ).writeAsBytes(bytes!.buffer.asUint8List());
       image.dispose();
     });
