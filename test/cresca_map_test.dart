@@ -1,3 +1,4 @@
+import 'package:expcomp/exploration/world_map.dart';
 import 'package:expcomp/exploration/cresca_map.dart';
 import 'package:expcomp/main.dart';
 import 'package:flutter/material.dart';
@@ -24,7 +25,7 @@ void main() {
   testWidgets('Closed house doors block movement without opening dialogue', (
     tester,
   ) async {
-    await tester.pumpWidget(const MyApp());
+    await tester.pumpWidget(const MyApp(initialArea: WorldArea.testing));
     await tester.pumpAndSettle();
     final world = find.byKey(const ValueKey('world-grid'));
     Future<void> step(LogicalKeyboardKey key, [int count = 1]) async {
@@ -41,10 +42,10 @@ void main() {
     expect(tester.getTopLeft(world), firstDoor);
     expect(find.byKey(const ValueKey('npc-portrait')), findsNothing);
 
-    // Go around the NPC along row 10, then follow the east branch.
-    await step(LogicalKeyboardKey.arrowDown);
+    // Go around both NPCs along row 11, then follow the east branch.
+    await step(LogicalKeyboardKey.arrowDown, 2);
     await step(LogicalKeyboardKey.arrowRight, 7);
-    await step(LogicalKeyboardKey.arrowUp, 4);
+    await step(LogicalKeyboardKey.arrowUp, 5);
     final secondDoor = tester.getTopLeft(world);
     await step(LogicalKeyboardKey.arrowUp, 2);
     expect(tester.getTopLeft(world), secondDoor);

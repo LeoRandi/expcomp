@@ -1,3 +1,4 @@
+import 'package:expcomp/exploration/world_map.dart';
 import 'package:expcomp/main.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -7,7 +8,7 @@ void main() {
   testWidgets(
     'Camera follows across a 20 by 20 world at two-thirds tile scale',
     (tester) async {
-      await tester.pumpWidget(const MyApp());
+      await tester.pumpWidget(const MyApp(initialArea: WorldArea.testing));
       await tester.pumpAndSettle();
       final player = find.byKey(const ValueKey('player'));
       final world = find.byKey(const ValueKey('world-grid'));
@@ -30,7 +31,8 @@ void main() {
         final before = tester.getTopLeft(world);
         var nextColumn = (column + dx).clamp(0, 19);
         var nextRow = (row + dy).clamp(0, 19);
-        final hitsNpc = nextColumn == 10 && nextRow == 9;
+        final hitsTrainer = nextColumn == 10 && nextRow == 9;
+        final hitsNpc = hitsTrainer || (nextColumn == 11 && nextRow == 10);
         if (hitsNpc) {
           nextColumn = column;
           nextRow = row;
@@ -55,7 +57,12 @@ void main() {
         column = nextColumn;
         row = nextRow;
         if (hitsNpc) {
-          expect(find.text('Ready to meet your end?'), findsOneWidget);
+          expect(
+            find.text(
+              hitsTrainer ? 'Ready to meet your end?' : 'The Waykeeper',
+            ),
+            findsOneWidget,
+          );
           expect(find.byKey(const ValueKey('npc-portrait')), findsOneWidget);
           await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
           await tester.pumpAndSettle();
@@ -106,7 +113,7 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
-    await tester.pumpWidget(const MyApp());
+    await tester.pumpWidget(const MyApp(initialArea: WorldArea.testing));
     await tester.pumpAndSettle();
     expect(
       tester.getSize(find.byKey(const ValueKey('world-viewport'))),
@@ -120,10 +127,10 @@ void main() {
     );
     await tester.tap(find.byIcon(Icons.close));
     await tester.pumpAndSettle();
-    expect(find.text('Youngest of Cresca'), findsOneWidget);
+    expect(find.text('Youngest of Cresco'), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('close-player-info')));
     await tester.pumpAndSettle();
-    expect(find.text('Youngest of Cresca'), findsNothing);
+    expect(find.text('Youngest of Cresco'), findsNothing);
     await tester.tap(find.byKey(const ValueKey('move-up')));
     await tester.pumpAndSettle();
     expect(find.text('Ready to meet your end?'), findsOneWidget);

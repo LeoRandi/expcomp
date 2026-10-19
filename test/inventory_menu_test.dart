@@ -44,7 +44,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.byIcon(Icons.close));
       await tester.pumpAndSettle();
-      expect(find.text('Youngest of Cresca'), findsNothing);
+      expect(find.text('Youngest of Cresco'), findsNothing);
       await tap('open-party');
       await tap('open-inventory');
       expect(find.byKey(const ValueKey('party-menu')), findsNothing);
@@ -67,7 +67,7 @@ void main() {
       expect(find.byKey(const ValueKey('party-menu')), findsOneWidget);
       await tester.tap(find.byIcon(Icons.close));
       await tester.pumpAndSettle();
-      expect(find.text('Youngest of Cresca'), findsOneWidget);
+      expect(find.text('Youngest of Cresco'), findsOneWidget);
       expect(find.byKey(const ValueKey('party-menu')), findsNothing);
       await tap('open-inventory');
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);

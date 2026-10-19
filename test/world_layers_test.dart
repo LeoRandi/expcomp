@@ -1,3 +1,4 @@
+import 'package:expcomp/exploration/world_map.dart';
 import 'dart:io';
 import 'dart:ui' as ui;
 
@@ -43,7 +44,10 @@ void main() {
   ) async {
     final boundaryKey = GlobalKey();
     await tester.pumpWidget(
-      RepaintBoundary(key: boundaryKey, child: const MyApp()),
+      RepaintBoundary(
+        key: boundaryKey,
+        child: const MyApp(initialArea: WorldArea.testing),
+      ),
     );
     await tester.pumpAndSettle();
     var column = 10;

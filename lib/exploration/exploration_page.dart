@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
@@ -10,9 +11,13 @@ import '../party/party_menu.dart';
 import '../inventory/inventory_menu.dart';
 import '../player/player.dart';
 import '../creatures/showcase_party.dart';
-import 'cresca_map.dart';
+import 'cresca_town.dart';
+import 'area_arrival_title.dart';
+import 'building_tile.dart';
+import 'town_scenery.dart';
 import 'world_layers.dart';
 import 'world_lighting.dart';
+import 'world_map.dart';
 
 enum _PlayerWindow { player, party, inventory }
 
@@ -25,29 +30,31 @@ final _groundAtlas = PixelAtlasDefinition(
       'assets/pixel_ui/showcase/sheets_16grid/07_overworld_mixto/'
       '16x16_Block_Texture_Set/blocks__granite.png.png',
 );
-final _npcAtlas = PixelAtlasDefinition(
-  assetPath:
-      'assets/monsters/dark_fantasy_creatures_cc0/'
-      'raw_originals/03_stylized_fantasy/Wizard/wizard_walking_0.png',
-  sourceTileExtent: 48,
-);
+final _townRoadAtlas = PixelAtlasDefinition(assetPath: crescaPavingAsset);
 
 class ExplorationPage extends StatefulWidget {
-  const ExplorationPage({super.key, this.player});
+  const ExplorationPage({
+    super.key,
+    this.player,
+    this.initialArea = WorldArea.town,
+  });
 
   final Player? player;
+  final WorldArea initialArea;
 
   @override
   State<ExplorationPage> createState() => _ExplorationPageState();
 }
 
 class _ExplorationPageState extends State<ExplorationPage> {
-  static const cells = 20;
   static const visibleCells = 8.4;
-  static const npcColumn = cells ~/ 2;
-  static const npcRow = cells ~/ 2 - 1;
-  int _column = cells ~/ 2;
-  int _row = cells ~/ 2;
+  late ExplorationMap _map;
+  late int _column;
+  late int _row;
+  final Map<String, Offset> _npcPositions = {};
+  final Map<String, int> _routeSteps = {};
+  late final Timer _routineTimer;
+  int _routineTick = 0;
   bool _faceLeft = false;
   bool _dialogueOpen = false;
   _PlayerWindow? _window;
@@ -56,7 +63,100 @@ class _ExplorationPageState extends State<ExplorationPage> {
   final _focus = FocusNode();
 
   @override
+  void initState() {
+    super.initState();
+    _enterArea(widget.initialArea);
+    _routineTimer = Timer.periodic(const Duration(milliseconds: 1600), (_) {
+      if (_dialogueOpen ||
+          _window != null ||
+          !mounted ||
+          ModalRoute.of(context)?.isCurrent != true ||
+          (WidgetsBinding.instance.lifecycleState != null &&
+              WidgetsBinding.instance.lifecycleState !=
+                  AppLifecycleState.resumed)) {
+        return;
+      }
+      setState(() {
+        _routineTick++;
+        for (final npc in _map.npcs) {
+          if (npc.route.isEmpty) continue;
+          final step = ((_routeSteps[npc.id] ?? 0) + 1) % npc.route.length;
+          final next = npc.route[step];
+          if (next == Offset(_column.toDouble(), _row.toDouble()) ||
+              _npcPositions.entries.any(
+                (e) => e.key != npc.id && e.value == next,
+              ) ||
+              _map.isSolid(next.dx.toInt(), next.dy.toInt())) {
+            continue;
+          }
+          _npcPositions[npc.id] = next;
+          _routeSteps[npc.id] = step;
+        }
+      });
+    });
+  }
+
+  void _enterArea(WorldArea area) {
+    _map = area == WorldArea.town ? crescaTown : testingMap;
+    _column = _map.spawn.dx.toInt();
+    _row = _map.spawn.dy.toInt();
+    _faceLeft = false;
+    _routineTick = 0;
+    _npcPositions
+      ..clear()
+      ..addEntries(_map.npcs.map((npc) => MapEntry(npc.id, npc.position)));
+    _routeSteps.clear();
+  }
+
+  TownNpc? get _nearbyNpc {
+    for (final npc in _map.npcs) {
+      final position = _npcPositions[npc.id]!;
+      if ((position.dx - _column).abs() + (position.dy - _row).abs() == 1) {
+        return npc;
+      }
+    }
+    return null;
+  }
+
+  MapProp? get _nearbySign {
+    for (final prop in _map.props) {
+      if (prop.isReadable &&
+          (prop.position.dx - _column).abs() +
+                  (prop.position.dy - _row).abs() ==
+              1) {
+        return prop;
+      }
+    }
+    return null;
+  }
+
+  void _readSign(MapProp sign) {
+    if ((sign.position.dx - _column).abs() + (sign.position.dy - _row).abs() !=
+        1) {
+      return;
+    }
+    _showDialogue(
+      title: sign.label ?? 'Sign',
+      role: 'Weathered sign',
+      lines: sign.lines,
+      isSign: true,
+    );
+  }
+
+  void _interact() {
+    if (_dialogueOpen || _window != null) return;
+    final npc = _nearbyNpc;
+    if (npc != null) {
+      _showNpcDialogue(npc);
+    } else {
+      final sign = _nearbySign;
+      if (sign != null) _readSign(sign);
+    }
+  }
+
+  @override
   void dispose() {
+    _routineTimer.cancel();
     _focus.dispose();
     super.dispose();
   }
@@ -64,12 +164,23 @@ class _ExplorationPageState extends State<ExplorationPage> {
   void _move(int dx, int dy) {
     if (_dialogueOpen || _window != null) return;
     _focus.requestFocus();
-    final nextColumn = (_column + dx).clamp(0, cells - 1);
-    final nextRow = (_row + dy).clamp(0, cells - 1);
-    if (isHouseTile(nextColumn, nextRow)) return;
-    if (nextColumn == npcColumn && nextRow == npcRow) {
-      _showNpcDialogue();
-      return;
+    final nextColumn = (_column + dx).clamp(0, _map.columns - 1);
+    final nextRow = (_row + dy).clamp(0, _map.rows - 1);
+    if (nextColumn == _column && nextRow == _row) return;
+    for (final prop in _map.props) {
+      if (prop.isReadable &&
+          prop.position == Offset(nextColumn.toDouble(), nextRow.toDouble())) {
+        _readSign(prop);
+        return;
+      }
+    }
+    if (_map.isSolid(nextColumn, nextRow)) return;
+    for (final npc in _map.npcs) {
+      if (_npcPositions[npc.id] ==
+          Offset(nextColumn.toDouble(), nextRow.toDouble())) {
+        _showNpcDialogue(npc);
+        return;
+      }
     }
     setState(() {
       _column = nextColumn;
@@ -82,6 +193,12 @@ class _ExplorationPageState extends State<ExplorationPage> {
     if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
       return KeyEventResult.ignored;
     }
+    if (event is KeyDownEvent &&
+        (event.logicalKey == LogicalKeyboardKey.keyE ||
+            event.logicalKey == LogicalKeyboardKey.space)) {
+      _interact();
+      return KeyEventResult.handled;
+    }
     final direction = <LogicalKeyboardKey, (int, int)>{
       LogicalKeyboardKey.arrowUp: (0, -1),
       LogicalKeyboardKey.arrowDown: (0, 1),
@@ -93,100 +210,190 @@ class _ExplorationPageState extends State<ExplorationPage> {
     return KeyEventResult.handled;
   }
 
-  Future<void> _showNpcDialogue() async {
-    if (_dialogueOpen) return;
-    _dialogueOpen = true;
+  Future<void> _showNpcDialogue(TownNpc npc) => _showDialogue(
+    title: npc.name,
+    role: npc.role,
+    lines: npc.lines,
+    portraitAsset: npc.asset,
+    tint: npc.tint,
+    action: npc.action,
+  );
+
+  Future<void> _showDialogue({
+    required String title,
+    required String role,
+    required List<String> lines,
+    String? portraitAsset,
+    Color? tint,
+    NpcAction action = NpcAction.talk,
+    bool isSign = false,
+  }) async {
+    if (_dialogueOpen || _window != null) return;
+    setState(() => _dialogueOpen = true);
+    var page = 0;
     try {
-      final startBattle = await showDialog<bool>(
+      final accepted = await showDialog<bool>(
         context: context,
-        builder: (context) => Dialog(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          alignment: Alignment.bottomCenter,
-          insetPadding: const EdgeInsets.all(20),
-          child: SingleChildScrollView(
-            child: SizedBox(
-              width: 480,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Padding(
-                    padding: EdgeInsets.only(left: 24, bottom: 8),
-                    child: PixelAssetSprite(
-                      key: ValueKey('npc-portrait'),
-                      assetPath:
-                          'assets/monsters/dark_fantasy_creatures_cc0/'
-                          'raw_originals/03_stylized_fantasy/Wizard/wizard_8.png',
-                      width: 96,
-                      height: 96,
-                      semanticLabel: 'Cresca villager portrait',
-                    ),
-                  ),
-                  SizedBox(
-                    height: 256,
-                    child: PixelPanel.expanded(
-                      role: PixelSurfaceRole.dialog,
-                      padding: const EdgeInsets.all(24),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Cresca Villager',
-                            style: TextStyle(
-                              color: Color(0xFFE5DAC5),
-                              fontFamily: 'monospace',
-                              fontSize: PixelUiMetrics.title,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          const Expanded(
-                            child: Text(
-                              'Ready to meet your end?',
-                              style: TextStyle(
-                                color: Color(0xFFE5DAC5),
-                                fontFamily: 'monospace',
-                                fontSize: PixelUiMetrics.body,
-                                height: 1.4,
-                              ),
-                            ),
-                          ),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
+        builder: (dialogContext) => StatefulBuilder(
+          builder: (context, updateDialogue) => Dialog(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            alignment: Alignment.bottomCenter,
+            insetPadding: const EdgeInsets.all(16),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: 480,
+                maxHeight: MediaQuery.sizeOf(context).height * .8,
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (portraitAsset != null)
+                      Padding(
+                        padding: const EdgeInsets.only(left: 24, bottom: 8),
+                        child: PixelAssetSprite(
+                          key: const ValueKey('npc-portrait'),
+                          assetPath: portraitAsset,
+                          tint: tint,
+                          tintBlendMode: BlendMode.modulate,
+                          width: 80,
+                          height: 80,
+                          semanticLabel: '$title portrait',
+                        ),
+                      ),
+                    SizedBox(
+                      height: 320,
+                      width: double.infinity,
+                      child: PixelPanel.expanded(
+                        role: PixelSurfaceRole.dialog,
+                        padding: const EdgeInsets.all(20),
+                        child: SingleChildScrollView(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              PixelButton(
-                                key: const ValueKey('start-battle'),
-                                label: 'Yes',
-                                columns: 5,
-                                onPressed: () => Navigator.pop(context, true),
+                              Text(
+                                title,
+                                style: const TextStyle(
+                                  color: _gold,
+                                  fontSize: PixelUiMetrics.title,
+                                ),
                               ),
-                              const SizedBox(width: 12),
-                              PixelButton(
-                                key: const ValueKey('close-npc-dialogue'),
-                                label: 'No',
-                                columns: 5,
-                                onPressed: () => Navigator.pop(context, false),
+                              const SizedBox(height: 4),
+                              Text(
+                                role,
+                                style: const TextStyle(
+                                  color: Color(0xFFA9A39A),
+                                  fontSize: 12,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              Text.rich(
+                                TextSpan(
+                                  children: [
+                                    for (final part
+                                        in lines[page].split('~~').indexed)
+                                      TextSpan(
+                                        text: part.$2,
+                                        style: part.$1.isOdd
+                                            ? const TextStyle(
+                                                decoration:
+                                                    TextDecoration.lineThrough,
+                                              )
+                                            : null,
+                                      ),
+                                  ],
+                                ),
+                                key: const ValueKey('dialogue-text'),
+                                style: const TextStyle(
+                                  color: Color(0xFFE5DAC5),
+                                  fontSize: PixelUiMetrics.body,
+                                  height: 1.4,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.end,
+                                children: [
+                                  if (action != NpcAction.talk)
+                                    PixelButton(
+                                      key: ValueKey(
+                                        action == NpcAction.battle
+                                            ? 'start-battle'
+                                            : 'travel-npc',
+                                      ),
+                                      label: switch (action) {
+                                        NpcAction.battle => 'Yes',
+                                        NpcAction.testing => 'Enter',
+                                        _ => 'Return',
+                                      },
+                                      columns: 7,
+                                      onPressed: () =>
+                                          Navigator.pop(dialogContext, true),
+                                    )
+                                  else if (page < lines.length - 1)
+                                    PixelButton(
+                                      key: ValueKey(
+                                        isSign
+                                            ? 'next-sign-dialogue'
+                                            : 'next-npc-dialogue',
+                                      ),
+                                      label: 'Next',
+                                      columns: 6,
+                                      onPressed: () =>
+                                          updateDialogue(() => page++),
+                                    ),
+                                  const SizedBox(width: 8),
+                                  PixelButton(
+                                    key: ValueKey(
+                                      isSign
+                                          ? 'close-sign-dialogue'
+                                          : 'close-npc-dialogue',
+                                    ),
+                                    label: isSign
+                                        ? 'Close'
+                                        : action == NpcAction.battle
+                                        ? 'No'
+                                        : 'Leave',
+                                    columns: 6,
+                                    onPressed: () =>
+                                        Navigator.pop(dialogContext, false),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
-                        ],
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
         ),
       );
-      if (startBattle == true && mounted) {
-        await Navigator.of(
-          context,
-        ).push<void>(MaterialPageRoute(builder: (_) => const BattlePage()));
+      if (accepted == true && mounted) {
+        switch (action) {
+          case NpcAction.testing:
+            setState(() => _enterArea(WorldArea.testing));
+          case NpcAction.town:
+            setState(() => _enterArea(WorldArea.town));
+          case NpcAction.battle:
+            await Navigator.of(
+              context,
+            ).push<void>(MaterialPageRoute(builder: (_) => const BattlePage()));
+          case NpcAction.talk:
+            break;
+        }
       }
     } finally {
-      _dialogueOpen = false;
-      if (mounted) _focus.requestFocus();
+      if (mounted) {
+        setState(() => _dialogueOpen = false);
+        _focus.requestFocus();
+      }
     }
   }
 
@@ -295,6 +502,18 @@ class _ExplorationPageState extends State<ExplorationPage> {
                     Size(constraints.maxWidth, constraints.maxHeight),
                     tile,
                   ),
+                  Positioned(
+                    top: insets.top + 100,
+                    left: insets.left + 16,
+                    right: insets.right + 16,
+                    child: IgnorePointer(
+                      child: AreaArrivalTitle(
+                        key: ValueKey('arrival-${_map.area.name}'),
+                        name: _map.name,
+                        subtitle: _map.subtitle,
+                      ),
+                    ),
+                  ),
                   SafeArea(
                     child: Column(
                       children: [
@@ -395,6 +614,25 @@ class _ExplorationPageState extends State<ExplorationPage> {
                             height: controlsSize,
                             child: Stack(
                               children: [
+                                Align(
+                                  alignment: Alignment.center,
+                                  child: IconButton(
+                                    key: const ValueKey('interact-npc'),
+                                    tooltip: _nearbySign != null
+                                        ? 'Read sign (E / Space)'
+                                        : 'Talk (E / Space)',
+                                    onPressed:
+                                        (_nearbyNpc == null &&
+                                                _nearbySign == null) ||
+                                            _dialogueOpen ||
+                                            _window != null
+                                        ? null
+                                        : _interact,
+                                    icon: const Icon(Icons.chat_bubble_outline),
+                                    color: _gold,
+                                    disabledColor: const Color(0xFF575157),
+                                  ),
+                                ),
                                 _direction(
                                   Alignment.topCenter,
                                   Icons.arrow_upward,
@@ -482,12 +720,13 @@ class _ExplorationPageState extends State<ExplorationPage> {
         child: Stack(
           children: [
             AnimatedPositioned(
+              key: ValueKey(_map.area),
               duration: const Duration(milliseconds: 150),
               curve: Curves.easeInOut,
               left: playerLeft - _column * tile,
               top: playerTop - _row * tile,
-              width: cells * tile,
-              height: cells * tile,
+              width: _map.columns * tile,
+              height: _map.rows * tile,
               child: SizedBox(
                 key: const ValueKey('world-grid'),
                 child: WorldLayers(
@@ -497,9 +736,8 @@ class _ExplorationPageState extends State<ExplorationPage> {
                       child: Positioned.fill(
                         child: PixelAtlasBuilder(
                           atlas: _groundAtlas,
-                          builder: (context, image, error) => CustomPaint(
-                            painter: _GroundPainter(cells, image),
-                          ),
+                          builder: (context, image, error) =>
+                              CustomPaint(painter: _GroundPainter(_map, image)),
                         ),
                       ),
                     ),
@@ -507,13 +745,26 @@ class _ExplorationPageState extends State<ExplorationPage> {
                       z: WorldZ.road,
                       child: Positioned.fill(
                         child: PixelAtlasBuilder(
-                          atlas: SunderedKeepUi.theme.atlas,
-                          builder: (context, image, error) =>
-                              CustomPaint(painter: _VillagePainter(image)),
+                          atlas: _map.area == WorldArea.town
+                              ? _townRoadAtlas
+                              : SunderedKeepUi.theme.atlas,
+                          builder: (context, image, error) => CustomPaint(
+                            painter: _VillagePainter(_map, image),
+                          ),
                         ),
                       ),
                     ),
-                    for (final torch in crescaTorches)
+                    WorldEntry(
+                      z: WorldZ.road,
+                      child: Positioned.fill(
+                        child: IgnorePointer(
+                          child: CustomPaint(
+                            painter: TorchGlowPainter(_map, _routineTick),
+                          ),
+                        ),
+                      ),
+                    ),
+                    for (final torch in _map.torches)
                       WorldEntry(
                         z: WorldZ.actor,
                         depth: torch.dy + 1,
@@ -533,7 +784,7 @@ class _ExplorationPageState extends State<ExplorationPage> {
                           ),
                         ),
                       ),
-                    for (final building in crescaBuildings)
+                    for (final building in _map.buildings)
                       for (var y = 0; y < building.bounds.height; y++)
                         for (var x = 0; x < building.bounds.width; x++)
                           WorldEntry(
@@ -545,32 +796,56 @@ class _ExplorationPageState extends State<ExplorationPage> {
                               top: (building.bounds.top + y) * tile,
                               width: tile,
                               height: tile,
-                              child: Image.asset(
-                                'assets/overworld/cottage/tile_${y}_$x.png',
-                                filterQuality: FilterQuality.none,
-                                fit: BoxFit.fill,
-                                excludeFromSemantics: true,
-                              ),
+                              child: _map.area == WorldArea.town
+                                  ? BuildingTile(
+                                      column: x,
+                                      row: y,
+                                      appearance: building.appearance,
+                                    )
+                                  : Image.asset(
+                                      'assets/overworld/cottage/tile_${y}_$x.png',
+                                      filterQuality: FilterQuality.none,
+                                      fit: BoxFit.fill,
+                                      excludeFromSemantics: true,
+                                    ),
                             ),
                           ),
-                    WorldEntry(
-                      z: WorldZ.actor,
-                      depth: npcRow + 1,
-                      child: Positioned(
-                        left: npcColumn * tile,
-                        top: npcRow * tile,
-                        width: tile,
-                        height: tile,
-                        child: PixelSprite(
-                          key: const ValueKey('npc'),
-                          atlas: _npcAtlas,
-                          region: const PixelAtlasRegion(column: 0, row: 0),
+                    ...townSceneryEntries(_map, tile, onReadSign: _readSign),
+                    for (final npc in _map.npcs)
+                      WorldEntry(
+                        z: WorldZ.actor,
+                        depth: _npcPositions[npc.id]!.dy + 1,
+                        child: AnimatedPositioned(
+                          key: ValueKey('npc-position-${npc.id}'),
+                          duration: const Duration(milliseconds: 450),
+                          curve: Curves.easeInOut,
+                          left: _npcPositions[npc.id]!.dx * tile,
+                          top: _npcPositions[npc.id]!.dy * tile,
                           width: tile,
                           height: tile,
-                          semanticLabel: 'Cresca villager',
+                          child: GestureDetector(
+                            onTap: () {
+                              final position = _npcPositions[npc.id]!;
+                              if ((position.dx - _column).abs() +
+                                      (position.dy - _row).abs() ==
+                                  1) {
+                                _showNpcDialogue(npc);
+                              }
+                            },
+                            child: PixelAssetSprite(
+                              key: ValueKey(
+                                npc.id == 'trainer' ? 'npc' : 'npc-${npc.id}',
+                              ),
+                              assetPath: npc.asset,
+                              tint: npc.tint,
+                              tintBlendMode: BlendMode.modulate,
+                              width: tile,
+                              height: tile,
+                              semanticLabel: '${npc.name}, ${npc.role}',
+                            ),
+                          ),
                         ),
                       ),
-                    ),
                     WorldEntry(
                       z: WorldZ.actor,
                       depth: _row + 1,
@@ -585,6 +860,7 @@ class _ExplorationPageState extends State<ExplorationPage> {
                         width: tile,
                         height: tile,
                         child: Semantics(
+                          container: true,
                           label:
                               'Player at column ${_column + 1}, row ${_row + 1}',
                           child: SizedBox(
@@ -606,7 +882,7 @@ class _ExplorationPageState extends State<ExplorationPage> {
                       child: Positioned.fill(
                         child: IgnorePointer(
                           child: CustomPaint(
-                            painter: _FloorPainter(cells, _column, _row),
+                            painter: _FloorPainter(_map, _column, _row),
                           ),
                         ),
                       ),
@@ -660,8 +936,8 @@ class _ExplorationPageState extends State<ExplorationPage> {
 }
 
 class _GroundPainter extends CustomPainter {
-  const _GroundPainter(this.cells, this.image);
-  final int cells;
+  const _GroundPainter(this.map, this.image);
+  final ExplorationMap map;
   final ui.Image? image;
 
   @override
@@ -675,12 +951,18 @@ class _GroundPainter extends CustomPainter {
       return;
     }
     // One 16x16 source image fills each logical movement cell.
-    final artTile = size.width / cells;
+    final artTile = size.width / map.columns;
     final paint = Paint()
       ..filterQuality = FilterQuality.none
       ..isAntiAlias = false;
-    for (var y = 0; y < cells; y++) {
-      for (var x = 0; x < cells; x++) {
+    if (map.area == WorldArea.town) {
+      paint.colorFilter = const ColorFilter.mode(
+        Color(0xFFA2AA91),
+        BlendMode.modulate,
+      );
+    }
+    for (var y = 0; y < map.rows; y++) {
+      for (var x = 0; x < map.columns; x++) {
         canvas.drawImageRect(
           texture,
           const Rect.fromLTWH(0, 0, 16, 16),
@@ -690,10 +972,11 @@ class _GroundPainter extends CustomPainter {
       }
     }
     final movementTile = artTile;
+    paint.colorFilter = null;
     paint.color = Colors.black.withValues(alpha: .2);
-    for (var y = 0; y < cells; y++) {
-      for (var x = 0; x < cells; x++) {
-        if ((x + y).isEven) {
+    for (var y = 0; y < map.rows; y++) {
+      for (var x = 0; x < map.columns; x++) {
+        if (map.area == WorldArea.testing && (x + y).isEven) {
           canvas.drawRect(
             Rect.fromLTWH(
               x * movementTile,
@@ -706,22 +989,49 @@ class _GroundPainter extends CustomPainter {
         }
       }
     }
+    if (map.area == WorldArea.town) {
+      // The refuge occupies a cavern, with impassable rock at its perimeter.
+      for (var y = 0; y < map.rows; y++) {
+        for (var x = 0; x < map.columns; x++) {
+          if (!map.isCavernWall(x, y)) {
+            continue;
+          }
+          final bounds = Rect.fromLTWH(
+            x * artTile,
+            y * artTile,
+            artTile,
+            artTile,
+          );
+          canvas.drawRect(bounds, Paint()..color = const Color(0xAA15141D));
+          canvas.drawRect(
+            Rect.fromLTWH(
+              bounds.left + artTile * .1,
+              bounds.top + artTile * .12,
+              artTile * .76,
+              artTile * .15,
+            ),
+            Paint()..color = const Color(0xFF55515C),
+          );
+        }
+      }
+    }
   }
 
   @override
   bool shouldRepaint(_GroundPainter oldDelegate) =>
-      cells != oldDelegate.cells || image != oldDelegate.image;
+      map != oldDelegate.map || image != oldDelegate.image;
 }
 
 class _VillagePainter extends CustomPainter {
-  const _VillagePainter(this.image);
+  const _VillagePainter(this.map, this.image);
+  final ExplorationMap map;
   final ui.Image? image;
 
   @override
   void paint(Canvas canvas, Size size) {
     final atlas = image;
     if (atlas == null) return;
-    final tile = size.width / 20;
+    final tile = size.width / map.columns;
     final artTile = tile;
     final paint = Paint()..filterQuality = FilterQuality.none;
     void stamp(int sx, int sy, double x, double y, {int height = 1}) {
@@ -733,11 +1043,15 @@ class _VillagePainter extends CustomPainter {
       );
     }
 
-    for (var y = 0; y < 20; y++) {
-      for (var x = 0; x < 20; x++) {
-        if (!isRoadTile(x, y)) continue;
-        stamp(4 + x % 2, 1, x * tile, y * tile);
-        if ((x + y).isEven) {
+    for (var y = 0; y < map.rows; y++) {
+      for (var x = 0; x < map.columns; x++) {
+        if (!map.isRoad(x, y)) continue;
+        if (map.area == WorldArea.town) {
+          stamp(0, 0, x * tile, y * tile);
+        } else {
+          stamp(4 + x % 2, 1, x * tile, y * tile);
+        }
+        if (map.area == WorldArea.testing && (x + y).isEven) {
           canvas.drawRect(
             Rect.fromLTWH(x * tile, y * tile, tile, tile),
             Paint()..color = Colors.black.withValues(alpha: .2),
@@ -748,25 +1062,26 @@ class _VillagePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_VillagePainter oldDelegate) => image != oldDelegate.image;
+  bool shouldRepaint(_VillagePainter oldDelegate) =>
+      map != oldDelegate.map || image != oldDelegate.image;
 }
 
 class _FloorPainter extends CustomPainter {
-  const _FloorPainter(this.cells, this.playerColumn, this.playerRow);
-  final int cells;
+  const _FloorPainter(this.map, this.playerColumn, this.playerRow);
+  final ExplorationMap map;
   final int playerColumn;
   final int playerRow;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final tile = size.width / cells;
+    final tile = size.width / map.columns;
     final paint = Paint();
     final lights = [
       Offset(playerColumn.toDouble(), playerRow.toDouble()),
-      ...crescaTorches,
+      ...map.torches,
     ];
-    for (var y = 0; y < cells; y++) {
-      for (var x = 0; x < cells; x++) {
+    for (var y = 0; y < map.rows; y++) {
+      for (var x = 0; x < map.columns; x++) {
         final darkness = worldDarknessAt(x, y, lights);
         if (darkness > 0) {
           paint.color = Colors.black.withValues(alpha: darkness);
@@ -778,7 +1093,7 @@ class _FloorPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_FloorPainter oldDelegate) =>
-      cells != oldDelegate.cells ||
+      map != oldDelegate.map ||
       playerColumn != oldDelegate.playerColumn ||
       playerRow != oldDelegate.playerRow;
 }

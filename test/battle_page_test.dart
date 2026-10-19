@@ -1,3 +1,4 @@
+import 'package:expcomp/exploration/world_map.dart';
 import 'package:expcomp/main.dart';
 import 'package:expcomp/battle/battle_page.dart';
 import 'package:expcomp/battle/active_ally_border.dart';
@@ -35,7 +36,7 @@ void main() {
         );
         PixelUiThemeData skin(String key) =>
             PixelUiThemeData.of(tester.element(find.byKey(ValueKey(key))));
-        await tester.pumpWidget(const MyApp());
+        await tester.pumpWidget(const MyApp(initialArea: WorldArea.testing));
         await settle();
         await tap('move-up');
         await tap('start-battle');

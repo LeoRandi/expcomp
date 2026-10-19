@@ -2,13 +2,16 @@ import 'package:flutter/material.dart';
 
 import 'global_presentation/pixel_ui/pixel_ui.dart';
 import 'exploration/exploration_page.dart';
+import 'exploration/world_map.dart';
 
 void main() {
   runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  const MyApp({super.key, this.initialArea = WorldArea.town});
+
+  final WorldArea initialArea;
 
   @override
   Widget build(BuildContext context) {
@@ -25,7 +28,7 @@ class MyApp extends StatelessWidget {
         // Sunderkeep is the shared menu skin; creature cards override it by source.
         extensions: <ThemeExtension<dynamic>>[SunderedKeepUi.theme],
       ),
-      home: const ExplorationPage(),
+      home: ExplorationPage(initialArea: initialArea),
     );
   }
 }

@@ -9,6 +9,8 @@ const crescaTorches = [
   Offset(11, 16),
 ];
 
+enum BuildingAppearance { cottage, inn }
+
 class MapBuilding {
   const MapBuilding({
     required this.id,
@@ -16,12 +18,14 @@ class MapBuilding {
     required this.footprint,
     required this.wallZ,
     required this.roofZ,
+    this.appearance = BuildingAppearance.cottage,
   });
   final String id;
   final Rect bounds;
   final Rect footprint;
   final int wallZ;
   final int roofZ;
+  final BuildingAppearance appearance;
 }
 
 const crescaBuildings = [

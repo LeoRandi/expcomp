@@ -1,3 +1,4 @@
+import 'package:expcomp/exploration/world_map.dart';
 import 'package:expcomp/exploration/cresca_map.dart';
 import 'package:expcomp/exploration/world_lighting.dart';
 import 'package:expcomp/main.dart';
@@ -41,7 +42,7 @@ void main() {
   });
 
   testWidgets('Testing area loads four torch sprites', (tester) async {
-    await tester.pumpWidget(const MyApp());
+    await tester.pumpWidget(const MyApp(initialArea: WorldArea.testing));
     await tester.pumpAndSettle();
     for (final torch in crescaTorches) {
       final placed = find.byKey(
