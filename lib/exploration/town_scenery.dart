@@ -1,5 +1,8 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
+import 'area_transition.dart';
 import 'world_layers.dart';
 import 'world_map.dart';
 
@@ -43,7 +46,66 @@ List<WorldEntry> townSceneryEntries(
         ),
       ),
     ),
+  for (final exit in map.exits)
+    WorldEntry(
+      z: WorldZ.road,
+      child: Positioned(
+        key: ValueKey('area-exit-${exit.id}'),
+        left: exit.trigger.left * tile,
+        top: exit.trigger.top * tile,
+        width: exit.trigger.width * tile,
+        height: exit.trigger.height * tile,
+        child: Tooltip(
+          message: '${exit.id} crossing',
+          child: Semantics(
+            label: '${exit.id} crossing',
+            image: true,
+            child: CustomPaint(painter: _ExitMarkerPainter(exit.style)),
+          ),
+        ),
+      ),
+    ),
 ];
+
+class _ExitMarkerPainter extends CustomPainter {
+  const _ExitMarkerPainter(this.style);
+  final AreaTransitionStyle style;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.save();
+    canvas.translate(size.width / 2, size.height / 2);
+    final scale = math.min(size.width, size.height) / 16;
+    canvas.scale(scale);
+    canvas.rotate(switch (style) {
+      AreaTransitionStyle.north => 0,
+      AreaTransitionStyle.east => math.pi / 2,
+      AreaTransitionStyle.south => math.pi,
+      AreaTransitionStyle.west => -math.pi / 2,
+      AreaTransitionStyle.circle => 0,
+    });
+    final arrow = Path()
+      ..moveTo(0, -6)
+      ..lineTo(6, 0)
+      ..lineTo(2, 0)
+      ..lineTo(2, 5)
+      ..lineTo(-2, 5)
+      ..lineTo(-2, 0)
+      ..lineTo(-6, 0)
+      ..close();
+    canvas.drawPath(
+      arrow,
+      Paint()
+        ..color = const Color(0xFFB9A879)
+        ..isAntiAlias = false,
+    );
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(_ExitMarkerPainter oldDelegate) =>
+      style != oldDelegate.style;
+}
 
 int _fenceConnections(ExplorationMap map, MapProp prop) {
   if (!prop.isFence) return 0;

@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'cresca_map.dart';
 import 'world_layers.dart';
 import 'world_map.dart';
+import 'area_transition.dart';
 
 const crescaPavingAsset =
     'assets/pixel_ui/showcase/sheets_16grid/07_overworld_mixto/'
@@ -18,6 +19,36 @@ const crescaTown = ExplorationMap(
   columns: 40,
   rows: 40,
   spawn: Offset(11, 18),
+  exits: [
+    AreaExit(
+      id: 'north',
+      trigger: Rect.fromLTWH(20, 0, 2, 1),
+      destination: WorldArea.town,
+      arrival: Offset(20, 38),
+      style: AreaTransitionStyle.north,
+    ),
+    AreaExit(
+      id: 'east',
+      trigger: Rect.fromLTWH(39, 19, 1, 2),
+      destination: WorldArea.town,
+      arrival: Offset(1, 19),
+      style: AreaTransitionStyle.east,
+    ),
+    AreaExit(
+      id: 'south',
+      trigger: Rect.fromLTWH(20, 39, 2, 1),
+      destination: WorldArea.town,
+      arrival: Offset(20, 1),
+      style: AreaTransitionStyle.south,
+    ),
+    AreaExit(
+      id: 'west',
+      trigger: Rect.fromLTWH(0, 19, 1, 2),
+      destination: WorldArea.town,
+      arrival: Offset(38, 19),
+      style: AreaTransitionStyle.west,
+    ),
+  ],
   buildings: [
     MapBuilding(
       id: 'baker',
@@ -86,7 +117,7 @@ const crescaTown = ExplorationMap(
   ],
   roadAt: _townRoad,
   torches: [
-    Offset(2, 19),
+    Offset(2, 18),
     Offset(6, 18),
     Offset(8, 18),
     Offset(13, 18),
@@ -317,7 +348,7 @@ const crescaTown = ExplorationMap(
 );
 
 bool _townRoad(int x, int y) =>
-    ((y == 19 || y == 20) && x >= 3 && x <= 39) ||
+    ((y == 19 || y == 20) && x >= 0 && x <= 39) ||
     (y == 18 && const [4, 11, 18, 25, 32].contains(x)) ||
     ((x == 20 || x == 21) && y >= 0 && y <= 39) ||
     (y == 25 && x >= 3 && x <= 33) ||

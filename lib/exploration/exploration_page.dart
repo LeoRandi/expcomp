@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 
 import '../global_presentation/pixel_ui/pixel_ui.dart';
@@ -13,6 +14,7 @@ import '../player/player.dart';
 import '../creatures/showcase_party.dart';
 import 'cresca_town.dart';
 import 'area_arrival_title.dart';
+import 'area_transition.dart';
 import 'building_tile.dart';
 import 'town_scenery.dart';
 import 'world_layers.dart';
@@ -46,7 +48,8 @@ class ExplorationPage extends StatefulWidget {
   State<ExplorationPage> createState() => _ExplorationPageState();
 }
 
-class _ExplorationPageState extends State<ExplorationPage> {
+class _ExplorationPageState extends State<ExplorationPage>
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   static const visibleCells = 8.4;
   late ExplorationMap _map;
   late int _column;
@@ -54,6 +57,13 @@ class _ExplorationPageState extends State<ExplorationPage> {
   final Map<String, Offset> _npcPositions = {};
   final Map<String, int> _routeSteps = {};
   late final Timer _routineTimer;
+  Timer? _directionHoldDelay;
+  Timer? _directionHoldRepeat;
+  int? _heldDirectionPointer;
+  late final AnimationController _cover;
+  bool _transitioning = false;
+  bool _revealing = false;
+  AreaTransitionStyle _transitionStyle = AreaTransitionStyle.circle;
   int _routineTick = 0;
   bool _faceLeft = false;
   bool _dialogueOpen = false;
@@ -65,9 +75,16 @@ class _ExplorationPageState extends State<ExplorationPage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _cover = AnimationController(
+      vsync: this,
+      duration: areaTransitionDuration,
+      animationBehavior: AnimationBehavior.preserve,
+    );
     _enterArea(widget.initialArea);
     _routineTimer = Timer.periodic(const Duration(milliseconds: 1600), (_) {
-      if (_dialogueOpen ||
+      if (_transitioning ||
+          _dialogueOpen ||
           _window != null ||
           !mounted ||
           ModalRoute.of(context)?.isCurrent != true ||
@@ -108,6 +125,80 @@ class _ExplorationPageState extends State<ExplorationPage> {
     _routeSteps.clear();
   }
 
+  Future<void> _preloadMap(ExplorationMap map) async {
+    final bundle = DefaultAssetBundle.of(context);
+    final images = {
+      _sprite,
+      'assets/overworld/torch.png',
+      for (final npc in map.npcs) npc.asset,
+      if (map.area == WorldArea.testing)
+        for (var y = 0; y < 3; y++)
+          for (var x = 0; x < 3; x++)
+            'assets/overworld/cottage/tile_${y}_$x.png',
+    };
+    final atlases = {
+      _groundAtlas.assetPath,
+      SunderedKeepUi.theme.atlas.assetPath,
+      if (map.area == WorldArea.town) ...[
+        _townRoadAtlas.assetPath,
+        'assets/overworld/cottage/cottage.png',
+      ],
+    };
+    await Future.wait<void>([
+      for (final path in images)
+        precacheImage(AssetImage(path, bundle: bundle), context),
+      for (final path in atlases)
+        PixelAtlasCache.load(bundle: bundle, assetPath: path).then((_) {}),
+    ]);
+  }
+
+  Future<void> _travel(
+    WorldArea area, {
+    AreaTransitionStyle style = AreaTransitionStyle.circle,
+    Offset? arrival,
+  }) async {
+    if (_transitioning || _window != null) return;
+    _stopDirectionHold();
+    final target = area == WorldArea.town ? crescaTown : testingMap;
+    setState(() {
+      _transitioning = true;
+      _revealing = false;
+      _transitionStyle = style;
+    });
+    try {
+      await Future.wait<void>([
+        _cover.forward(from: 0).orCancel,
+        _preloadMap(target),
+      ], eagerError: true);
+      if (!mounted) return;
+      // Paint the completed black mask before swapping the scene, and paint
+      // the prepared destination behind it before exposing the new location.
+      await WidgetsBinding.instance.endOfFrame;
+      if (!mounted) return;
+      setState(() {
+        if (_map.area != area) _enterArea(area);
+        final position = arrival ?? target.spawn;
+        _column = position.dx.toInt();
+        _row = position.dy.toInt();
+        if (style == AreaTransitionStyle.west) _faceLeft = true;
+        if (style == AreaTransitionStyle.east) _faceLeft = false;
+        _revealing = true;
+        _cover.value = 0;
+      });
+      await WidgetsBinding.instance.endOfFrame;
+      if (!mounted) return;
+      await _cover.forward(from: 0).orCancel;
+      await WidgetsBinding.instance.endOfFrame;
+    } on TickerCanceled {
+      // Disposing exploration cancels its in-flight transition.
+    } finally {
+      if (mounted) {
+        setState(() => _transitioning = false);
+        _focus.requestFocus();
+      }
+    }
+  }
+
   TownNpc? get _nearbyNpc {
     for (final npc in _map.npcs) {
       final position = _npcPositions[npc.id]!;
@@ -144,7 +235,7 @@ class _ExplorationPageState extends State<ExplorationPage> {
   }
 
   void _interact() {
-    if (_dialogueOpen || _window != null) return;
+    if (_transitioning || _dialogueOpen || _window != null) return;
     final npc = _nearbyNpc;
     if (npc != null) {
       _showNpcDialogue(npc);
@@ -156,13 +247,51 @@ class _ExplorationPageState extends State<ExplorationPage> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _stopDirectionHold();
     _routineTimer.cancel();
+    _cover.dispose();
     _focus.dispose();
     super.dispose();
   }
 
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) _stopDirectionHold();
+  }
+
+  void _stopDirectionHold({int? pointer}) {
+    if (pointer != null && pointer != _heldDirectionPointer) return;
+    _directionHoldDelay?.cancel();
+    _directionHoldDelay = null;
+    _directionHoldRepeat?.cancel();
+    _directionHoldRepeat = null;
+    _heldDirectionPointer = null;
+  }
+
+  void _startDirectionHold(PointerDownEvent event, int dx, int dy) {
+    if (_transitioning ||
+        _dialogueOpen ||
+        _window != null ||
+        event.buttons & kPrimaryButton == 0) {
+      return;
+    }
+    _stopDirectionHold();
+    _heldDirectionPointer = event.pointer;
+    _move(dx, dy);
+    // The initial step may open dialogue or start travel and cancel the hold.
+    if (_heldDirectionPointer != event.pointer) return;
+    _directionHoldDelay = Timer(const Duration(milliseconds: 500), () {
+      _directionHoldRepeat = Timer.periodic(const Duration(milliseconds: 200), (
+        _,
+      ) {
+        _move(dx, dy);
+      });
+    });
+  }
+
   void _move(int dx, int dy) {
-    if (_dialogueOpen || _window != null) return;
+    if (_transitioning || _dialogueOpen || _window != null) return;
     _focus.requestFocus();
     final nextColumn = (_column + dx).clamp(0, _map.columns - 1);
     final nextRow = (_row + dy).clamp(0, _map.rows - 1);
@@ -182,6 +311,12 @@ class _ExplorationPageState extends State<ExplorationPage> {
         return;
       }
     }
+    for (final exit in _map.exits) {
+      if (exit.trigger.contains(Offset(nextColumn + .5, nextRow + .5))) {
+        _travel(exit.destination, style: exit.style, arrival: exit.arrival);
+        return;
+      }
+    }
     setState(() {
       _column = nextColumn;
       _row = nextRow;
@@ -190,6 +325,7 @@ class _ExplorationPageState extends State<ExplorationPage> {
   }
 
   KeyEventResult _onKey(FocusNode node, KeyEvent event) {
+    if (_transitioning) return KeyEventResult.handled;
     if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
       return KeyEventResult.ignored;
     }
@@ -228,11 +364,12 @@ class _ExplorationPageState extends State<ExplorationPage> {
     NpcAction action = NpcAction.talk,
     bool isSign = false,
   }) async {
-    if (_dialogueOpen || _window != null) return;
+    if (_transitioning || _dialogueOpen || _window != null) return;
+    _stopDirectionHold();
     setState(() => _dialogueOpen = true);
     var page = 0;
     try {
-      final accepted = await showDialog<bool>(
+      final route = DialogRoute<bool>(
         context: context,
         builder: (dialogContext) => StatefulBuilder(
           builder: (context, updateDialogue) => Dialog(
@@ -375,12 +512,17 @@ class _ExplorationPageState extends State<ExplorationPage> {
           ),
         ),
       );
+      final accepted = await Navigator.of(context).push<bool>(route);
+      if (accepted == true &&
+          (action == NpcAction.testing || action == NpcAction.town)) {
+        await route.completed;
+      }
       if (accepted == true && mounted) {
         switch (action) {
           case NpcAction.testing:
-            setState(() => _enterArea(WorldArea.testing));
+            await _travel(WorldArea.testing);
           case NpcAction.town:
-            setState(() => _enterArea(WorldArea.town));
+            await _travel(WorldArea.town);
           case NpcAction.battle:
             await Navigator.of(
               context,
@@ -442,6 +584,8 @@ class _ExplorationPageState extends State<ExplorationPage> {
   );
 
   void _showWindow(_PlayerWindow window) {
+    if (_transitioning || _dialogueOpen) return;
+    _stopDirectionHold();
     if (_window == window) {
       _closeWindow();
       return;
@@ -459,6 +603,7 @@ class _ExplorationPageState extends State<ExplorationPage> {
   }
 
   Future<void> _backWindow() async {
+    if (_transitioning) return;
     final navigator = _windowNavigator.currentState;
     if (navigator != null && await navigator.maybePop()) return;
     if (mounted && _window != null) _closeWindow();
@@ -467,7 +612,7 @@ class _ExplorationPageState extends State<ExplorationPage> {
   @override
   Widget build(BuildContext context) {
     return PopScope<Object?>(
-      canPop: _window == null,
+      canPop: !_transitioning && _window == null,
       onPopInvokedWithResult: (didPop, result) {
         if (!didPop && _window != null) _backWindow();
       },
@@ -502,18 +647,19 @@ class _ExplorationPageState extends State<ExplorationPage> {
                     Size(constraints.maxWidth, constraints.maxHeight),
                     tile,
                   ),
-                  Positioned(
-                    top: insets.top + 100,
-                    left: insets.left + 16,
-                    right: insets.right + 16,
-                    child: IgnorePointer(
-                      child: AreaArrivalTitle(
-                        key: ValueKey('arrival-${_map.area.name}'),
-                        name: _map.name,
-                        subtitle: _map.subtitle,
+                  if (!_transitioning)
+                    Positioned(
+                      top: insets.top + 100,
+                      left: insets.left + 16,
+                      right: insets.right + 16,
+                      child: IgnorePointer(
+                        child: AreaArrivalTitle(
+                          key: ValueKey('arrival-${_map.area.name}'),
+                          name: _map.name,
+                          subtitle: _map.subtitle,
+                        ),
                       ),
                     ),
-                  ),
                   SafeArea(
                     child: Column(
                       children: [
@@ -700,6 +846,20 @@ class _ExplorationPageState extends State<ExplorationPage> {
                         ),
                       ),
                     ),
+                  if (_transitioning)
+                    Positioned.fill(
+                      child: AreaTransitionOverlay(
+                        key: const ValueKey('area-transition-overlay'),
+                        animation: _cover,
+                        revealing: _revealing,
+                        style: _transitionStyle,
+                        playerCenter: Offset(
+                          constraints.maxWidth / 2,
+                          constraints.maxHeight / 2,
+                        ),
+                        tileExtent: tile,
+                      ),
+                    ),
                 ],
               );
             },
@@ -721,7 +881,9 @@ class _ExplorationPageState extends State<ExplorationPage> {
           children: [
             AnimatedPositioned(
               key: ValueKey(_map.area),
-              duration: const Duration(milliseconds: 150),
+              duration: _transitioning
+                  ? Duration.zero
+                  : const Duration(milliseconds: 150),
               curve: Curves.easeInOut,
               left: playerLeft - _column * tile,
               top: playerTop - _row * tile,
@@ -853,7 +1015,9 @@ class _ExplorationPageState extends State<ExplorationPage> {
                       // centered even mid-step, inside the shared world layers.
                       child: AnimatedPositioned(
                         key: const ValueKey('player-position'),
-                        duration: const Duration(milliseconds: 150),
+                        duration: _transitioning
+                            ? Duration.zero
+                            : const Duration(milliseconds: 150),
                         curve: Curves.easeInOut,
                         left: _column * tile,
                         top: _row * tile,
@@ -914,17 +1078,45 @@ class _ExplorationPageState extends State<ExplorationPage> {
           color: const Color(0xFF302C30),
           shape: const _DiamondBorder(),
           clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            key: ValueKey('move-$name'),
-            onTap: () => _move(dx, dy),
-            child: Semantics(
-              label: 'Move $name',
-              button: true,
-              child: Center(
-                child: Icon(
-                  icon,
-                  color: const Color(0xFFE5DAC5),
-                  size: size * .17,
+          child: FocusableActionDetector(
+            shortcuts: const {
+              SingleActivator(LogicalKeyboardKey.enter): ActivateIntent(),
+              SingleActivator(LogicalKeyboardKey.space): ActivateIntent(),
+            },
+            actions: {
+              ActivateIntent: CallbackAction<ActivateIntent>(
+                onInvoke: (_) {
+                  _move(dx, dy);
+                  return null;
+                },
+              ),
+            },
+            child: Listener(
+              key: ValueKey('move-$name'),
+              behavior: HitTestBehavior.opaque,
+              onPointerDown: (event) => _startDirectionHold(event, dx, dy),
+              onPointerUp: (event) =>
+                  _stopDirectionHold(pointer: event.pointer),
+              onPointerCancel: (event) =>
+                  _stopDirectionHold(pointer: event.pointer),
+              onPointerMove: (event) {
+                final bounds = Rect.fromLTWH(0, 0, size * .39, size * .39);
+                if (!const _DiamondBorder()
+                    .getOuterPath(bounds)
+                    .contains(event.localPosition)) {
+                  _stopDirectionHold(pointer: event.pointer);
+                }
+              },
+              child: Semantics(
+                label: 'Move $name',
+                button: true,
+                onTap: () => _move(dx, dy),
+                child: Center(
+                  child: Icon(
+                    icon,
+                    color: const Color(0xFFE5DAC5),
+                    size: size * .17,
+                  ),
                 ),
               ),
             ),

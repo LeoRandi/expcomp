@@ -34,7 +34,11 @@ home and speak to the veiled stranger immediately to your right for transport to
 the testing grounds. Speak to the Waykeeper there to return home. The original
 battle interaction remains with the testing grounds' villager.
 
-Use arrow keys or the direction buttons to move. Walk into an NPC, tap an adjacent
+Use arrow keys or the direction buttons to move. Pressing a direction button takes
+one step immediately. Hold it for half a second to enable repeated steps every
+200 milliseconds (the first extra step is at 0.7 seconds). Releasing or dragging
+off the button stops movement, as do menus, dialogue, area changes, and app focus loss.
+Walk into an NPC, tap an adjacent
 NPC, or press the central Talk button / E / Space to converse. Residents have
 one to three dialogue pages. Menus and conversations pause their walking routines.
 Area names and subtitles fade in and out over one second on arrival, on a
@@ -52,3 +56,9 @@ flutter analyze lib test
 
 Town cottage doors are one movement tile tall. The Resting Lantern inn has
 violet timber, a sea-green roof, a striped canopy, and a readable name sign.
+
+The four road ends have arrow markers for testing area transitions. Walk into the
+north, east, south, or west boundary to arrive just inside the opposite edge of
+Cresca. Each crossing has a 1.2-second directional blackout followed by a 1.2-second opposing reveal. The stranger and Waykeeper use a circular close/reopen instead.
+The entire screen, including the header and controls, is covered; input and NPC
+routines stay paused until the reveal finishes. Arrival titles play afterward.

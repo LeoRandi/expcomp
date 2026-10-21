@@ -67,7 +67,8 @@ local residents to their initial routine positions. Houses remain closed.
 Every street in the town core lies within a torch's fully visible radius without
 relying on the player's light. The north, east, and south roads continue to the
 map boundaries with no additional torches; their far ends are dark. Those road
-openings pass through the cavern rim, and do not yet change maps. Torches occupy
+openings pass through the cavern rim and currently wrap to the opposite side of
+Cresca as transition test points. Torches occupy
 clear cells beside the paving, keeping every road cell free of torches. Outer
 corners remain dark. Warm pools below actors alternate
 slightly while the shared atmosphere retains the original stepped visibility.
@@ -121,3 +122,57 @@ and roof layering are unchanged.
 The inn's explicit `BuildingAppearance.inn` uses violet walls, sea-green shingles,
 a small glowing roof window, and a striped canopy. Its solid, readable sign at
 (26,18) names THE RESTING LANTERN and advertises rooms and warm meals on page two.
+
+## Area transitions
+
+The direction pad moves once on pointer down. After a half-second hold window,
+it repeats that movement every 200ms (first repeat at 0.7s). Releasing, pointer
+cancellation, dragging off the diamond, or losing app focus cancels the hold.
+Opening a menu, dialogue, or area transition also cancels it, so closing that
+screen requires a fresh press to move again. A new direction replaces the held
+direction; releasing the older pointer cannot cancel the newer one.
+
+`area_transition.dart` supplies four directional curtains and a circular iris.
+Each closing phase lasts exactly 1.2 seconds: 0.5s to 55% covered, 0.2s back to
+45%, then 0.5s to full black. North covers bottom to top; east left to right;
+south top to bottom; west right to left. Each segment eases at its endpoints.
+
+For circular travel, the clear aperture is centered on the player's viewport
+position. It shrinks from the farthest screen corner to a 2.5-tile radius in 0.5s,
+expands to 3.5 tiles in 0.2s, then closes to zero in 0.5s.
+
+The destination's art preloads during the cover. Once a fully black frame has
+painted, the destination is positioned behind that mask without a camera tween.
+The opening phase lasts another 1.2 seconds, reversing the opposing direction's
+mask. Eastward travel therefore reveals left to right. The iris opens with the
+reverse radius sequence: zero to 3.5 tiles, back to 2.5, then fully open.
+If asset loading takes longer than the cover, the black mask waits for it.
+
+The mask is above all exploration content, including the header, direction pad,
+and menu windows. Its modal barrier blocks the entire viewport even during a
+partial mask. Keyboard movement, interaction, menus, back navigation, and repeated
+travel requests are guarded too. NPC routines pause throughout both phases.
+Teleport dialogues finish closing before the mask starts. Arrival titles restart
+after the reveal; disposing exploration cancels the in-flight animation safely.
+
+`ExplorationMap.exits` defines each trigger, destination, arrival, and style.
+The prototype's four two-cell openings are marked by ground arrows:
+
+| Exit | Trigger cells | Arrival cell | Effect |
+| --- | --- | --- | --- |
+| North | (20,0), (21,0) | (20,38) | Upward curtain |
+| East | (39,19), (39,20) | (1,19) | Rightward curtain |
+| South | (20,39), (21,39) | (20,1) | Downward curtain |
+| West | (0,19), (0,20) | (38,19) | Leftward curtain |
+
+The west end of the main street now reaches the boundary as well. Each arrival
+is one cell inside its edge to avoid immediate retriggering. Same-map crossings
+preserve residents' positions; cross-map travel preserves the player and their
+inventory. The stranger and Waykeeper use the shared travel function's default
+circle effect, which is also available for future indoor transitions.
+
+Validation: `flutter test test/area_transition_test.dart` checks exact timing,
+pixel coverage of all five masks, opposing reveals, the four crossings at desktop
+and portrait sizes, input blocking during both halves, NPC/inventory preservation,
+and disposal. It also reads back actual rendered frames at the swap to verify
+every screen pixel is black, including the header and buttons.

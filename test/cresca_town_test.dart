@@ -1,3 +1,4 @@
+import 'exploration_test_support.dart';
 import 'dart:io';
 import 'dart:ui' as ui;
 
@@ -128,6 +129,7 @@ void main() {
   testWidgets(
     'Area titles fade in and out over one second on a rounded translucent panel',
     (tester) async {
+      await warmExplorationAssets(tester);
       await tester.pumpWidget(const MyApp());
       final title = find.byKey(const ValueKey('area-name'));
       final fade = find.byKey(const ValueKey('area-title-fade'));
@@ -151,6 +153,7 @@ void main() {
         await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
         await tester.pumpAndSettle();
         await tester.tap(find.byKey(const ValueKey('travel-npc')));
+        await finishAreaTransition(tester);
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 100));
         expect(find.text(area), findsOneWidget);
@@ -165,6 +168,7 @@ void main() {
   testWidgets(
     'Stranger round trip preserves inventory and the battle interaction',
     (tester) async {
+      await warmExplorationAssets(tester);
       final player = Player.demo();
       final inventory = player.inventory;
       await tester.pumpWidget(
@@ -183,6 +187,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(tester.getTopLeft(world), start);
       await tester.tap(find.byKey(const ValueKey('travel-npc')));
+      await finishAreaTransition(tester);
       await tester.pumpAndSettle();
       expect(find.byKey(const ValueKey(WorldArea.testing)), findsOneWidget);
       expect(find.byKey(const ValueKey('npc')), findsOneWidget);
@@ -199,6 +204,7 @@ void main() {
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('travel-npc')));
+      await finishAreaTransition(tester);
       await tester.pumpAndSettle();
       expect(find.byKey(const ValueKey(WorldArea.town)), findsOneWidget);
       expect(tester.getTopLeft(world), start);

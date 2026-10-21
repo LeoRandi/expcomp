@@ -1,10 +1,26 @@
 import 'dart:ui';
 
 import 'cresca_map.dart';
+import 'area_transition.dart';
 
 enum WorldArea { town, testing }
 
 enum NpcAction { talk, testing, town, battle }
+
+class AreaExit {
+  const AreaExit({
+    required this.id,
+    required this.trigger,
+    required this.destination,
+    required this.arrival,
+    required this.style,
+  });
+  final String id;
+  final Rect trigger;
+  final WorldArea destination;
+  final Offset arrival;
+  final AreaTransitionStyle style;
+}
 
 const characterAssets =
     'assets/monsters/dark_fantasy_creatures_cc0/'
@@ -81,6 +97,7 @@ class ExplorationMap {
     required this.npcs,
     required this.roadAt,
     this.props = const [],
+    this.exits = const [],
   });
 
   final WorldArea area;
@@ -93,6 +110,7 @@ class ExplorationMap {
   final List<Offset> torches;
   final List<TownNpc> npcs;
   final List<MapProp> props;
+  final List<AreaExit> exits;
   final bool Function(int, int) roadAt;
 
   bool contains(Offset tile) =>
