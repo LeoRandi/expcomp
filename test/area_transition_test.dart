@@ -216,7 +216,10 @@ void main() {
         await warmExplorationAssets(tester);
         final screenKey = GlobalKey();
         await tester.pumpWidget(
-          RepaintBoundary(key: screenKey, child: const MyApp()),
+          RepaintBoundary(
+            key: screenKey,
+            child: const MyApp(initialArea: WorldArea.town),
+          ),
         );
         await tester.pumpAndSettle();
         for (final exit in crescaTown.exits.where(
@@ -317,7 +320,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           theme: ThemeData(extensions: [SunderedKeepUi.theme]),
-          home: ExplorationPage(player: player),
+          home: ExplorationPage(player: player, initialArea: WorldArea.town),
         ),
       );
       await tester.pumpAndSettle();
@@ -385,7 +388,7 @@ void main() {
       'Disposing exploration during ${duringReveal ? 'reveal' : 'cover'} cancels travel cleanly',
       (tester) async {
         await warmExplorationAssets(tester);
-        await tester.pumpWidget(const MyApp());
+        await tester.pumpWidget(const MyApp(initialArea: WorldArea.town));
         await tester.pumpAndSettle();
         await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
         await tester.pumpAndSettle();

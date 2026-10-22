@@ -16,5 +16,13 @@ exploration/gameplay role. Experimental styles stay isolated under
 `pixel_ui/showcase/`. Prefer atlases at runtime; standalone files remain
 supported for characters that have not been packed yet.
 
+Exploration also reuses the existing imported tiles under
+`pixel_ui/showcase/tiles_16x16/`: Idylwild's `foliage_pack` tiles `(7,6)` and
+`(8,6)` for rocks, `(13,6)` for crates, and `(14,15)` for flowers, plus Puny World
+tile `(22,27)` for indoor wooden panels. Coordinates are `(column,row)` in the
+source tile names. Indoor masonry and benches use the castle atlas; doors use
+the cottage atlas. `lib/exploration/stock_prop_sprite.dart` owns the shared prop
+lookup. Furniture without suitable existing artwork uses plain labeled tiles.
+
 The imported source collection did not include license or attribution files.
 Provenance and redistribution rights must be recorded before release.

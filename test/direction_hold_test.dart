@@ -182,7 +182,7 @@ void main() {
     tester,
   ) async {
     await warmExplorationAssets(tester);
-    await tester.pumpWidget(const MyApp());
+    await tester.pumpWidget(const MyApp(initialArea: WorldArea.town));
     await tester.pumpAndSettle();
     await walkExplorationTo(tester, const Offset(29, 3));
     final hold = await _press(tester, 'up');

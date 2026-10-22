@@ -9,7 +9,7 @@ void main() {
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key, this.initialArea = WorldArea.town});
+  const MyApp({super.key, this.initialArea = WorldArea.crescaIndoors});
 
   final WorldArea initialArea;
 

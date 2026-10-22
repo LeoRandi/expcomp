@@ -21,6 +21,7 @@
 
 ---
 {
+  "light radius": 6,
   "area": "testing",
   "name": "Testing grounds",
   "subtitle": "Spar with the villager. The Waykeeper can take you home.",

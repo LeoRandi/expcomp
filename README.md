@@ -1,7 +1,7 @@
 # expcomp
 
 Flutter tile-based RPG prototype with the Sundered Keep pixel UI. The game opens
-in **Cresca**, the protagonist's underground hometown.
+inside the protagonist's home in **Cresca**, their underground hometown.
 
 ```sh
 flutter pub get
@@ -26,14 +26,15 @@ Asset provenance notes are preserved in the READMEs under `assets/`.
 
 The provisional world outline is in [docs/story.md](docs/story.md). All areas use
 [four independent text maps](assets/text-maps/README.md): objects/NPCs, floor,
-chests, and gates. Cresca, testing, and Route 1 each have their own folder under
+chests, and gates. Cresca, Cresca interiors, testing, and Route 1 have folders under
 `assets/text-maps/`, loaded through one shared parser. NPC legends contain names,
 dialogue, sprites, tints, patrols, and actions; gate legends own all travel links.
 New players start with an empty inventory.
 
 Cresca sits in the middle of a 55×55 cavern (3,025 tiles).
-Torches stand beside the cobblestone roads. Start outside your
-home and speak to the veiled stranger immediately to your right for transport to
+Torches stand beside the cobblestone roads. Start on the sleeping cushions shared
+with your dad in a furnished home with wooden floors. Walk through the front door
+to reach the doorstep, then speak to the veiled stranger immediately to your right for transport to
 the testing grounds. Speak to the Waykeeper there to return home. The original
 battle interaction remains with the testing grounds' villager.
 
@@ -59,6 +60,11 @@ flutter analyze lib test
 
 Town cottage doors are one movement tile tall. The Resting Lantern inn has
 violet timber, a sea-green roof, a striped canopy, and a readable name sign.
+The player's home door is interactive: bump it, tap it while adjacent, or use
+E / Space / the interaction button to enter. Both directions use circular
+transitions. The [interior maps](assets/text-maps/README.md#cresca-interiors)
+span 110x110 cells with nine separated 12x12 rooms surrounded by black void;
+only the player's home is accessible for now.
 
 Cresca's north road enters Route 1, loaded directly from
 [the object map](assets/text-maps/r1/r1-objects.txt) and
@@ -66,7 +72,7 @@ Cresca's north road enters Route 1, loaded directly from
 Travel destinations and arrival coordinates come from
 [the gate map](assets/text-maps/r1/r1-gates.txt).
 The route includes cave walls, sand paths, grass that covers the player's lower
-half throughout movement, a closed cottage, jagged rocks, and chests with one-time rewards.
+half throughout movement, a closed cottage, foliage-pack rock sprites, and chests with one-time rewards.
 Sand paths continue beneath props and gates. Chest rewards come from
 [the numbered chest map](assets/text-maps/r1/r1-chests.txt); opened chests stay empty.
 Rocks and the house have no interactions; the other route gates are placeholders.

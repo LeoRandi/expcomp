@@ -3,6 +3,7 @@ import 'package:expcomp/exploration/world_map.dart';
 import 'package:expcomp/exploration/route_one.dart';
 import 'package:expcomp/exploration/route_one_scenery.dart';
 import 'package:expcomp/exploration/world_maps.dart';
+import 'package:expcomp/exploration/indoor_scenery.dart';
 import 'package:expcomp/player/player.dart';
 import 'package:expcomp/inventory/item_catalog.dart';
 import 'package:expcomp/global_presentation/pixel_ui/pixel_ui.dart';
@@ -34,6 +35,7 @@ Future<void> warmExplorationAssets(WidgetTester tester) async {
       'assets/overworld/cottage/cottage.png',
       'assets/overworld/torch.png',
       ...routeOneArtAssets,
+      ...indoorArtAssets,
       'assets/pixel_ui/showcase/sheets_16grid/07_overworld_mixto/'
           '16x16_Block_Texture_Set/blocks__granite.png.png',
       for (final map in [crescaTown, testingMap])

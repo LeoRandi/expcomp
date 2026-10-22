@@ -17,6 +17,7 @@ import 'area_arrival_title.dart';
 import 'area_transition.dart';
 import 'building_tile.dart';
 import 'world_maps.dart';
+import 'indoor_scenery.dart';
 import 'route_one_scenery.dart';
 import 'town_scenery.dart';
 import 'world_layers.dart';
@@ -40,7 +41,7 @@ class ExplorationPage extends StatefulWidget {
   const ExplorationPage({
     super.key,
     this.player,
-    this.initialArea = WorldArea.town,
+    this.initialArea = WorldArea.crescaIndoors,
   });
 
   final Player? player;
@@ -173,6 +174,7 @@ class _ExplorationPageState extends State<ExplorationPage>
       if (map.area != WorldArea.testing) 'assets/overworld/cottage/cottage.png',
       if (map.area == WorldArea.town) _townRoadAtlas.assetPath,
       if (map.area == WorldArea.routeOne) ...routeOneArtAssets,
+      if (map.area == WorldArea.crescaIndoors) ...indoorArtAssets,
     };
     await Future.wait<void>([
       for (final path in images)
@@ -243,6 +245,31 @@ class _ExplorationPageState extends State<ExplorationPage>
     return null;
   }
 
+  bool _besideGate(MapGate gate) => const [
+    Offset(0, -1),
+    Offset(1, 0),
+    Offset(0, 1),
+    Offset(-1, 0),
+  ].any((d) => gate.trigger.contains(Offset(_column + .5, _row + .5) + d));
+
+  MapGate? get _nearbyDoor {
+    for (final gate in _map.gates) {
+      if (gate.door && gate.exit != null && _besideGate(gate)) return gate;
+    }
+    return null;
+  }
+
+  void _openDoor(MapGate gate) {
+    if (_transitioning ||
+        _dialogueOpen ||
+        _window != null ||
+        !_besideGate(gate)) {
+      return;
+    }
+    final exit = gate.exit!;
+    _travel(exit.destination, arrival: exit.arrival, style: exit.style);
+  }
+
   MapProp? get _nearbySign {
     for (final prop in _map.props) {
       if (prop.isReadable &&
@@ -311,6 +338,11 @@ class _ExplorationPageState extends State<ExplorationPage>
 
   void _interact() {
     if (_transitioning || _dialogueOpen || _window != null) return;
+    final door = _nearbyDoor;
+    if (door != null) {
+      _openDoor(door);
+      return;
+    }
     final npc = _nearbyNpc;
     if (npc != null) {
       _showNpcDialogue(npc);
@@ -373,6 +405,14 @@ class _ExplorationPageState extends State<ExplorationPage>
     final nextColumn = (_column + dx).clamp(0, _map.columns - 1);
     final nextRow = (_row + dy).clamp(0, _map.rows - 1);
     if (nextColumn == _column && nextRow == _row) return;
+    for (final gate in _map.gates) {
+      if (gate.door &&
+          gate.exit != null &&
+          gate.trigger.contains(Offset(nextColumn + .5, nextRow + .5))) {
+        _openDoor(gate);
+        return;
+      }
+    }
     for (final prop in _map.props) {
       if (prop.chest != null &&
           prop.position == Offset(nextColumn.toDouble(), nextRow.toDouble())) {
@@ -863,7 +903,9 @@ class _ExplorationPageState extends State<ExplorationPage>
                                   alignment: Alignment.center,
                                   child: IconButton(
                                     key: const ValueKey('interact-npc'),
-                                    tooltip: _nearbyChest != null
+                                    tooltip: _nearbyDoor != null
+                                        ? 'Enter home (E / Space)'
+                                        : _nearbyChest != null
                                         ? 'Open chest (E / Space)'
                                         : _nearbySign != null
                                         ? 'Read sign (E / Space)'
@@ -871,6 +913,7 @@ class _ExplorationPageState extends State<ExplorationPage>
                                     onPressed:
                                         (_nearbyNpc == null &&
                                                 _nearbyChest == null &&
+                                                _nearbyDoor == null &&
                                                 _nearbySign == null) ||
                                             _dialogueOpen ||
                                             _window != null
@@ -998,17 +1041,22 @@ class _ExplorationPageState extends State<ExplorationPage>
                     WorldEntry(
                       z: WorldZ.ground,
                       child: Positioned.fill(
-                        child: PixelAtlasBuilder(
-                          atlas: _groundAtlas,
-                          builder: (context, image, error) =>
-                              CustomPaint(painter: _GroundPainter(_map, image)),
-                        ),
+                        child: _map.area == WorldArea.crescaIndoors
+                            ? IndoorTerrain(map: _map)
+                            : PixelAtlasBuilder(
+                                atlas: _groundAtlas,
+                                builder: (context, image, error) => CustomPaint(
+                                  painter: _GroundPainter(_map, image),
+                                ),
+                              ),
                       ),
                     ),
                     WorldEntry(
                       z: WorldZ.road,
                       child: Positioned.fill(
-                        child: _map.area == WorldArea.routeOne
+                        child: _map.area == WorldArea.crescaIndoors
+                            ? const SizedBox.shrink()
+                            : _map.area == WorldArea.routeOne
                             ? RouteOneTerrain(map: _map)
                             : PixelAtlasBuilder(
                                 atlas: _map.area == WorldArea.town
@@ -1088,6 +1136,27 @@ class _ExplorationPageState extends State<ExplorationPage>
                             tile,
                             onReadSign: _readSign,
                           )),
+                    for (final gate in _map.gates)
+                      if (gate.door && gate.exit != null)
+                        WorldEntry(
+                          z: WorldZ.roof,
+                          child: Positioned(
+                            key: ValueKey('door-${gate.number}'),
+                            left: gate.trigger.left * tile,
+                            top: gate.trigger.top * tile,
+                            width: gate.trigger.width * tile,
+                            height: gate.trigger.height * tile,
+                            child: GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onTap: () => _openDoor(gate),
+                              child: Semantics(
+                                label: 'Enter home',
+                                button: true,
+                                child: const SizedBox.expand(),
+                              ),
+                            ),
+                          ),
+                        ),
                     for (final npc in _map.npcs)
                       WorldEntry(
                         z: WorldZ.actor,
@@ -1386,13 +1455,18 @@ class _FloorPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final tile = size.width / map.columns;
     final paint = Paint();
-    final lights = [
-      Offset(playerColumn.toDouble(), playerRow.toDouble()),
-      ...map.torches,
-    ];
+    final player = Offset(playerColumn.toDouble(), playerRow.toDouble());
     for (var y = 0; y < map.rows; y++) {
       for (var x = 0; x < map.columns; x++) {
-        final darkness = worldDarknessAt(x, y, lights);
+        final darkness = map.floorAt(x, y) == '#'
+            ? 1.0
+            : worldDarknessAt(
+                x,
+                y,
+                map.torches,
+                player: player,
+                playerRadius: map.lightRadius,
+              );
         if (darkness > 0) {
           paint.color = Colors.black.withValues(alpha: darkness);
           canvas.drawRect(Rect.fromLTWH(x * tile, y * tile, tile, tile), paint);

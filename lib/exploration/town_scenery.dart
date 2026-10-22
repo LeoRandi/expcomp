@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'area_transition.dart';
 import 'world_layers.dart';
 import 'world_map.dart';
+import 'stock_prop_sprite.dart';
 
 /// Small scenery drawn on the same 16px grid as the existing cottage art.
 List<WorldEntry> townSceneryEntries(
@@ -14,7 +15,14 @@ List<WorldEntry> townSceneryEntries(
 }) => [
   for (final prop in map.props)
     WorldEntry(
-      z: prop.kind == PropKind.flowers || prop.kind == PropKind.garden
+      z:
+          const [
+            PropKind.flowers,
+            PropKind.garden,
+            PropKind.cushions,
+            PropKind.rug,
+            PropKind.door,
+          ].contains(prop.kind)
           ? WorldZ.road
           : WorldZ.actor,
       depth: prop.position.dy + 1,
@@ -35,12 +43,24 @@ List<WorldEntry> townSceneryEntries(
               label: prop.label ?? prop.kind.name,
               image: !prop.isReadable,
               button: prop.isReadable,
-              child: CustomPaint(
-                painter: _PropPainter(
-                  prop.kind,
-                  fenceConnections: _fenceConnections(map, prop),
-                ),
-              ),
+              child:
+                  map.area == WorldArea.crescaIndoors ||
+                      const [
+                        PropKind.rock,
+                        PropKind.table,
+                        PropKind.chair,
+                        PropKind.cushions,
+                        PropKind.rug,
+                        PropKind.bookcase,
+                        PropKind.door,
+                      ].contains(prop.kind)
+                  ? StockPropSprite(kind: prop.kind)
+                  : CustomPaint(
+                      painter: _PropPainter(
+                        prop.kind,
+                        fenceConnections: _fenceConnections(map, prop),
+                      ),
+                    ),
             ),
           ),
         ),
@@ -246,6 +266,14 @@ class _PropPainter extends CustomPainter {
         block(2, 3, 12, 5, lightWood);
         block(4, 5, 8, 1, 0xFF493D37);
         block(5, 7, 5, 1, 0xFF493D37);
+      case PropKind.table:
+      case PropKind.chair:
+      case PropKind.cushions:
+      case PropKind.rug:
+      case PropKind.bookcase:
+      case PropKind.door:
+        // These use StockPropSprite and never enter this painter.
+        break;
     }
     canvas.restore();
   }

@@ -3,7 +3,7 @@ description: "A new Flutter project."
 
 publish_to: 'none'
  
-version: 0.0.12
+version: 0.0.13
 
 environment:
   sdk: ^3.9.2
@@ -25,12 +25,18 @@ flutter:
   assets:
     - assets/text-maps/r1/
     - assets/text-maps/cresca/
+    - assets/text-maps/cresca-indoors/
     - assets/text-maps/testing/
     - assets/pixel_ui/showcase/sheets_16grid/07_overworld_mixto/16x16_Overworld_Tiles/tiles__sand1.png.png
     - assets/pixel_ui/showcase/sheets_16grid/07_overworld_mixto/16x16_Overworld_Tiles/tiles__grass1.png.png
     - assets/overworld/torch.png
     - assets/overworld/cottage/
     - assets/pixel_ui/showcase/sheets_16grid/07_overworld_mixto/16x16_Block_Texture_Set/blocks__granite.png.png
+    - assets/pixel_ui/showcase/tiles_16x16/07_overworld_mixto/16x16_Puny_World_Tileset/punyworld-overworld-tileset_0/tile_y027_x022.png
+    - assets/pixel_ui/showcase/tiles_16x16/01_praderas_campos/Idylwild_s_Foliage_Pack/foliage_pack/tile_y006_x007.png
+    - assets/pixel_ui/showcase/tiles_16x16/01_praderas_campos/Idylwild_s_Foliage_Pack/foliage_pack/tile_y006_x008.png
+    - assets/pixel_ui/showcase/tiles_16x16/01_praderas_campos/Idylwild_s_Foliage_Pack/foliage_pack/tile_y006_x013.png
+    - assets/pixel_ui/showcase/tiles_16x16/01_praderas_campos/Idylwild_s_Foliage_Pack/foliage_pack/tile_y015_x014.png
     - assets/pixel_ui/showcase/sheets_16grid/07_overworld_mixto/16x16_Block_Texture_Set/blocks__cobblestone_bricks.png.png
     - assets/sundered_keep/tiles/
     - assets/sundered_keep/icons/

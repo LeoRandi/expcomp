@@ -33,7 +33,11 @@ void main() {
       expect(map.isSolid(map.spawn.dx.toInt(), map.spawn.dy.toInt()), isFalse);
       if (area != WorldArea.routeOne) {
         expect(map.props.where((prop) => prop.chest != null), isEmpty);
-        expect(map.npcs.length, area == WorldArea.town ? 7 : 2);
+        expect(map.npcs.length, switch (area) {
+          WorldArea.town => 7,
+          WorldArea.testing => 2,
+          _ => 0,
+        });
       }
     }
   });
@@ -69,6 +73,54 @@ void main() {
     expect(gates.cells, original.cells);
     expect(gates.floorCells, original.floorCells);
   });
+
+  test(
+    'Object legends configure player light with a validated legacy fallback',
+    () {
+      const radii = {
+        WorldArea.town: 6.0,
+        WorldArea.testing: 6.0,
+        WorldArea.routeOne: 2.0,
+        WorldArea.crescaIndoors: 100.0,
+      };
+      for (final area in WorldArea.values) {
+        expect(parse(area, sources(area)).lightRadius, radii[area]);
+      }
+      final layers = sources(WorldArea.crescaIndoors);
+      final setting = RegExp(r'"light radius":\s*100');
+      final original = parse(WorldArea.crescaIndoors, layers);
+      final changed = parse(WorldArea.crescaIndoors, {
+        ...layers,
+        'objects': layers['objects']!.replaceFirst(
+          setting,
+          '"light radius": 1.5',
+        ),
+      });
+      expect(changed.lightRadius, 1.5);
+      expect(changed.cells, original.cells);
+      expect(changed.floorCells, original.floorCells);
+      final fallback = parse(WorldArea.crescaIndoors, {
+        ...layers,
+        'objects': layers['objects']!.replaceFirst(
+          RegExp(r'\s*"light radius":\s*100,'),
+          '',
+        ),
+      });
+      expect(fallback.lightRadius, 6);
+      for (final invalid in ['0', '-1', '"bright"', 'true', '1e999']) {
+        expect(
+          () => parse(WorldArea.crescaIndoors, {
+            ...layers,
+            'objects': layers['objects']!.replaceFirst(
+              setting,
+              '"light radius": $invalid',
+            ),
+          }),
+          throwsFormatException,
+        );
+      }
+    },
+  );
 
   test('Gate data owns NPC teleports and inactive future routes', () {
     final town = parse(WorldArea.town, sources(WorldArea.town));

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../global_presentation/pixel_ui/pixel_ui.dart';
 import 'world_layers.dart';
 import 'world_map.dart';
+import 'stock_prop_sprite.dart';
 
 const routeOneCaveAsset = 'assets/pixel_ui/showcase/cave_tileset.png';
 const routeOneSandAsset =
@@ -19,6 +20,7 @@ const routeOneArtAssets = [
   routeOneSandAsset,
   routeOneGrassAsset,
   routeOneChestAsset,
+  ...stockRockAssets,
 ];
 
 /// Tile art overlays the shared granite floor; coordinates match the text map.
@@ -177,11 +179,12 @@ List<WorldEntry> routeOneSceneryEntries(
             button: prop.chest != null,
             image: prop.chest == null,
             child: prop.kind == PropKind.rock
-                ? RouteRockSprite(
+                ? StockPropSprite(
+                    kind: PropKind.rock,
                     variant:
                         (prop.position.dx.toInt() * 13 +
                             prop.position.dy.toInt() * 7) %
-                        3,
+                        stockRockAssets.length,
                   )
                 : PixelAtlasBuilder(
                     atlas: PixelAtlasDefinition(assetPath: routeOneChestAsset),
@@ -248,108 +251,4 @@ class _RouteChestPainter extends CustomPainter {
   @override
   bool shouldRepaint(_RouteChestPainter old) =>
       image != old.image || opened != old.opened;
-}
-
-/// A full-width, pointed 16x20 pixel rock with stable, varied silhouettes.
-class RouteRockSprite extends StatelessWidget {
-  const RouteRockSprite({super.key, required this.variant});
-  final int variant;
-
-  @override
-  Widget build(BuildContext context) =>
-      CustomPaint(painter: _RockPainter(variant));
-}
-
-class _RockPainter extends CustomPainter {
-  const _RockPainter(this.variant);
-  final int variant;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    canvas.save();
-    canvas.scale(size.width / 16, size.height / 20);
-    final peak = [6.0, 9.0, 5.0][variant % 3];
-    final points = <Offset>[
-      const Offset(1, 18),
-      const Offset(0, 14),
-      const Offset(2, 11),
-      const Offset(2, 8),
-      Offset(peak - 2, 6),
-      Offset(peak - 2, 3),
-      Offset(peak, 3),
-      Offset(peak + 1, 0),
-      Offset(peak + 3, 2),
-      Offset(peak + 3, 5),
-      const Offset(13, 7),
-      const Offset(13, 10),
-      const Offset(15, 10),
-      const Offset(16, 14),
-      const Offset(15, 18),
-      const Offset(12, 20),
-      const Offset(4, 20),
-    ];
-    final outline = Path()..addPolygon(points, true);
-    final paint = Paint()..isAntiAlias = false;
-    canvas.drawPath(outline, paint..color = const Color(0xFF34343D));
-    canvas.clipPath(outline, doAntiAlias: false);
-    canvas.drawPath(
-      Path()..addPolygon([
-        Offset(peak + 1, 1),
-        Offset(peak + 3, 6),
-        const Offset(12, 9),
-        const Offset(14, 15),
-        const Offset(11, 18),
-        const Offset(3, 18),
-        const Offset(1, 14),
-        const Offset(4, 8),
-        Offset(peak - 1, 6),
-      ], true),
-      paint..color = const Color(0xFF7C7A80),
-    );
-    canvas.drawPath(
-      Path()..addPolygon([
-        Offset(peak + 1, 1),
-        Offset(peak + 1, 8),
-        const Offset(6, 12),
-        const Offset(3, 17),
-        const Offset(2, 13),
-        const Offset(4, 8),
-        Offset(peak - 1, 6),
-      ], true),
-      paint..color = const Color(0xFFA6A0A0),
-    );
-    canvas.drawPath(
-      Path()..addPolygon([
-        Offset(peak + 1, 8),
-        const Offset(12, 9),
-        const Offset(14, 15),
-        const Offset(12, 19),
-        const Offset(9, 17),
-      ], true),
-      paint..color = const Color(0xFF565763),
-    );
-    canvas.drawPath(
-      Path()
-        ..moveTo(peak + 1, 8)
-        ..lineTo(7, 12)
-        ..lineTo(8, 15),
-      paint
-        ..color = const Color(0xFF44444E)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1,
-    );
-    paint.style = PaintingStyle.fill;
-    canvas.drawRect(
-      Rect.fromLTWH(peak - 1, 5, 2, 1),
-      paint..color = const Color(0xFFCDC0B3),
-    );
-    canvas.drawRect(
-      const Rect.fromLTWH(3, 14, 1, 2),
-      paint..color = const Color(0xFFC3B6AB),
-    );
-    canvas.restore();
-  }
-
-  @override
-  bool shouldRepaint(_RockPainter old) => variant != old.variant;
 }

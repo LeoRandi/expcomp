@@ -6,6 +6,7 @@ import 'chest_contents.dart';
 import 'cresca_map.dart';
 import 'world_layers.dart';
 import 'world_map.dart';
+import 'world_lighting.dart';
 
 class TextMapLayer {
   TextMapLayer(String source, String allowed) {
@@ -80,8 +81,8 @@ List<MapGate> _gates(TextMapLayer layer) {
     final active = data['enabled'] != false;
     final style = AreaTransitionStyle.values.byName(data['style'] as String);
     final automatic = data['mode'] == 'walk';
-    if (!const ['walk', 'interact'].contains(data['mode'])) {
-      throw const FormatException('Gate mode must be walk or interact.');
+    if (!const ['walk', 'interact', 'door'].contains(data['mode'])) {
+      throw const FormatException('Gate mode must be walk, interact, or door.');
     }
     result.add(
       MapGate(
@@ -89,6 +90,7 @@ List<MapGate> _gates(TextMapLayer layer) {
         destinationName: destination,
         trigger: rect,
         automatic: automatic,
+        door: data['mode'] == 'door',
         exit: active
             ? AreaExit(
                 id: data['id'] as String,
@@ -112,8 +114,11 @@ ExplorationMap parseTextMap({
   required String chestSource,
   required String gateSource,
 }) {
-  final objects = TextMapLayer(objectSource, r'X.\-ighCrufvcbwspFGS1-9');
-  final floor = TextMapLayer(floorSource, r'X0.\-=');
+  final objects = TextMapLayer(
+    objectSource,
+    r'#xDTtkRBX.\-ighCrufvcbwspFGS1-9',
+  );
+  final floor = TextMapLayer(floorSource, r'#WX0.\-=');
   final chests = TextMapLayer(chestSource, r'X.\-1-9');
   final gateLayer = TextMapLayer(gateSource, r'X.\-1-9');
   final rows = objects.cells.length;
@@ -126,6 +131,12 @@ ExplorationMap parseTextMap({
     }
   }
   final meta = objects.metadata;
+  final lightRadius = meta['light radius'] ?? defaultLightRadius;
+  if (lightRadius is! num || !lightRadius.isFinite || lightRadius <= 0) {
+    throw const FormatException(
+      'light radius must be a positive finite number.',
+    );
+  }
   final gates = _gates(gateLayer);
   final contents = _parseChests(chests, objects.cells, areaId);
   final floorCells = [
@@ -151,6 +162,12 @@ ExplorationMap parseTextMap({
     'F': PropKind.fence,
     'G': PropKind.gate,
     'S': PropKind.sign,
+    'T': PropKind.table,
+    't': PropKind.chair,
+    'k': PropKind.cushions,
+    'R': PropKind.rug,
+    'B': PropKind.bookcase,
+    'D': PropKind.door,
   };
   for (var y = 0; y < rows; y++) {
     for (var x = 0; x < columns; x++) {
@@ -198,7 +215,13 @@ ExplorationMap parseTextMap({
             label: info['label'] as String?,
             solid:
                 info['solid'] as bool? ??
-                !const [PropKind.flowers, PropKind.garden].contains(kind),
+                !const [
+                  PropKind.flowers,
+                  PropKind.garden,
+                  PropKind.cushions,
+                  PropKind.rug,
+                  PropKind.door,
+                ].contains(kind),
             lines: List<String>.from(info['lines'] as List? ?? []),
             chest: contents[p],
           ),
@@ -222,7 +245,9 @@ ExplorationMap parseTextMap({
     final action = NpcAction.values.byName(info['action'] as String? ?? 'talk');
     final gate = info['gate'] as String?;
     if (action == NpcAction.travel &&
-        !gates.any((g) => g.number == gate && !g.automatic && g.exit != null)) {
+        !gates.any(
+          (g) => g.number == gate && !g.automatic && !g.door && g.exit != null,
+        )) {
       throw const FormatException(
         'Travel NPC must reference an active interaction gate.',
       );
@@ -249,6 +274,7 @@ ExplorationMap parseTextMap({
     name: meta['name'] as String,
     subtitle: meta['subtitle'] as String,
     spawn: _point(meta['spawn']),
+    lightRadius: lightRadius.toDouble(),
     columns: columns,
     rows: rows,
     cells: objects.cells,

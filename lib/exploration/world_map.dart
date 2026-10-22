@@ -3,9 +3,10 @@ import 'dart:ui';
 import 'cresca_map.dart';
 import 'area_transition.dart';
 import 'chest_contents.dart';
+import 'world_lighting.dart';
 export 'world_maps.dart' show testingMap;
 
-enum WorldArea { town, testing, routeOne }
+enum WorldArea { town, testing, routeOne, crescaIndoors }
 
 enum NpcAction { talk, travel, battle }
 
@@ -15,12 +16,14 @@ class MapGate {
     required this.destinationName,
     required this.trigger,
     required this.automatic,
+    this.door = false,
     this.exit,
   });
   final String number;
   final String destinationName;
   final Rect trigger;
   final bool automatic;
+  final bool door;
   final AreaExit? exit;
 }
 
@@ -85,6 +88,12 @@ enum PropKind {
   gate,
   rock,
   chest,
+  table,
+  chair,
+  cushions,
+  rug,
+  bookcase,
+  door,
 }
 
 class MapProp {
@@ -119,6 +128,7 @@ class ExplorationMap {
     required this.buildings,
     required this.torches,
     required this.npcs,
+    this.lightRadius = defaultLightRadius,
     this.roadAt,
     this.props = const [],
     List<AreaExit> exits = const [],
@@ -133,6 +143,7 @@ class ExplorationMap {
   final int columns;
   final int rows;
   final Offset spawn;
+  final double lightRadius;
   final List<MapBuilding> buildings;
   final List<Offset> torches;
   final List<TownNpc> npcs;
@@ -170,6 +181,9 @@ class ExplorationMap {
   bool isSolid(int column, int row) {
     final tile = Offset(column.toDouble(), row.toDouble());
     return !contains(tile) ||
+        tileAt(column, row) == '#' ||
+        tileAt(column, row) == 'x' ||
+        floorAt(column, row) == '#' ||
         isCavernWall(column, row) ||
         buildings.any(
           (b) => b.footprint.contains(tile + const Offset(.5, .5)),

@@ -43,6 +43,35 @@ void main() {
     expect(worldDarknessAt(0, 0, []), 1);
   });
 
+  test('Player radius scales the whole aura without shrinking torch light', () {
+    const player = Offset.zero;
+    double darkness(
+      int x,
+      int y,
+      double radius, [
+      List<Offset> torches = const [],
+    ]) => worldDarknessAt(x, y, torches, player: player, playerRadius: radius);
+    // At radius 2 the three shaded bands fit inside a two-tile outer reach.
+    expect(darkness(0, 0, 2), 0);
+    expect(darkness(1, 0, 2), .5);
+    expect(darkness(1, 1, 2), .75);
+    expect(darkness(2, 0, 2), 1);
+    expect(darkness(10, 10, 100), 0);
+    expect(darkness(20, 20, 100), 0);
+    // A distant torch still has the original six-tile reach.
+    expect(darkness(10, 0, 2, [const Offset(10, 0)]), 0);
+    expect(darkness(13, 0, 2, [const Offset(10, 0)]), .5);
+    expect(darkness(16, 0, 2, [const Offset(10, 0)]), 1);
+    for (var x = -7; x <= 7; x++) {
+      for (var y = -7; y <= 7; y++) {
+        expect(
+          darkness(x, y, defaultLightRadius),
+          worldDarknessAt(x, y, [player]),
+        );
+      }
+    }
+  });
+
   testWidgets('Testing area loads four torch sprites', (tester) async {
     await tester.pumpWidget(const MyApp(initialArea: WorldArea.testing));
     await tester.pumpAndSettle();

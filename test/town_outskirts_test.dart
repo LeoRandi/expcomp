@@ -192,7 +192,10 @@ void main() {
         }
         final boundaryKey = GlobalKey();
         await tester.pumpWidget(
-          RepaintBoundary(key: boundaryKey, child: const MyApp()),
+          RepaintBoundary(
+            key: boundaryKey,
+            child: const MyApp(initialArea: WorldArea.town),
+          ),
         );
         await tester.pumpAndSettle();
         for (final sign in crescaTown.props.where((p) => p.isReadable)) {

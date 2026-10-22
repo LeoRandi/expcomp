@@ -136,7 +136,7 @@ void main() {
     'Area titles fade in and out over one second on a rounded translucent panel',
     (tester) async {
       await warmExplorationAssets(tester);
-      await tester.pumpWidget(const MyApp());
+      await tester.pumpWidget(const MyApp(initialArea: WorldArea.town));
       final title = find.byKey(const ValueKey('area-name'));
       final fade = find.byKey(const ValueKey('area-title-fade'));
       double opacity() => tester.widget<FadeTransition>(fade).opacity.value;
@@ -180,7 +180,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           theme: ThemeData(extensions: [SunderedKeepUi.theme]),
-          home: ExplorationPage(player: player),
+          home: ExplorationPage(player: player, initialArea: WorldArea.town),
         ),
       );
       await tester.pumpAndSettle();
@@ -225,7 +225,7 @@ void main() {
   testWidgets(
     'Residents walk, pause during conversations and menus, and share lore',
     (tester) async {
-      await tester.pumpWidget(const MyApp());
+      await tester.pumpWidget(const MyApp(initialArea: WorldArea.town));
       await tester.pumpAndSettle();
       Offset ivo() {
         final p = tester.widget<AnimatedPositioned>(
@@ -237,7 +237,9 @@ void main() {
       final start = ivo();
       await tester.pump(const Duration(milliseconds: 1600));
       expect(ivo(), isNot(start));
-      await tester.sendKeyEvent(LogicalKeyboardKey.keyE);
+      // The doorstep's interaction now enters the home; bump the stranger
+      // explicitly to open a conversation instead.
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
       await tester.pumpAndSettle();
       final paused = ivo();
       await tester.pump(const Duration(seconds: 5));
@@ -285,13 +287,21 @@ void main() {
       await icons.load();
     });
     final key = GlobalKey();
-    await tester.pumpWidget(RepaintBoundary(key: key, child: const MyApp()));
+    await tester.pumpWidget(
+      RepaintBoundary(
+        key: key,
+        child: const MyApp(initialArea: WorldArea.town),
+      ),
+    );
     await tester.pumpAndSettle();
     final player = find.byKey(const ValueKey('player'));
     final world = find.byKey(const ValueKey('world-grid'));
     final viewport = find.byKey(const ValueKey('world-viewport'));
     final tile = tester.getSize(player).width;
     expect(tester.getSize(world), Size(tile * 55, tile * 55));
+    // The wall beside the interactive front door remains solid.
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+    await tester.pumpAndSettle();
     // Check both collision at home and camera/player alignment during a step.
     final start = tester.getTopLeft(world);
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
@@ -306,6 +316,8 @@ void main() {
     );
     await tester.pumpAndSettle();
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+    await tester.pumpAndSettle();
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
     await tester.pumpAndSettle();
     await tester.runAsync(() async {
       for (final element in find.byType(PixelAtlasBuilder).evaluate()) {
@@ -348,7 +360,7 @@ void main() {
       ).writeAsBytes(bytes!.buffer.asUint8List());
       image.dispose();
     });
-    await tester.tap(find.byKey(const ValueKey('interact-npc')));
+    await tester.tap(find.byKey(const ValueKey('npc-stranger')));
     await tester.pumpAndSettle();
     expect(find.text('The Veiled Stranger'), findsOneWidget);
     expect(

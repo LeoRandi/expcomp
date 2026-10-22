@@ -6,6 +6,7 @@ const mapPrefixes = {
   WorldArea.town: 'cresca',
   WorldArea.testing: 'testing',
   WorldArea.routeOne: 'r1',
+  WorldArea.crescaIndoors: 'cresca-indoors',
 };
 const mapLayers = ['objects', 'floor', 'chests', 'gates'];
 final _pending = <(AssetBundle, WorldArea), Future<ExplorationMap>>{};

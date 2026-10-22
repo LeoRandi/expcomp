@@ -31,12 +31,16 @@ The player has no opaque debug tile background.
 Four decorative torch sprites remain in the testing area, positioned by
 `crescaTorches` in `lib/exploration/cresca_map.dart`. Both maps depth-sort their
 own torches in the actor layer.
-The atmosphere uses `worldDarknessAt` for both the player and torches: circular
-rings use Euclidean distance between tile centers. Distances below 3 are clear,
+The atmosphere uses `worldDarknessAt` for circular auras measured between tile
+centers. Each objects legend's `light radius` controls the player's outer reach;
+the shared loader stores it as `ExplorationMap.lightRadius`. The original value
+is 6, explicitly used in Cresca and testing and as the fallback for older maps.
+Route 1 uses 2, and interiors use 100. At radius 6, distances below 3 are clear,
 3 to below 4 / 4 to below 5 / 5 to below 6 have opacity 0.5/0.75/0.9,
-and 6+ is opaque. Entire tiles are shaded, preserving a stepped pixel-art edge.
-The nearest source determines visibility, so overlapping lights
-never darken each other and torches stay lit when the player walks away.
+and 6+ is opaque. The player's bands scale proportionally with their radius.
+Torches always retain the original radius 6; the brighter result of the player
+and fixed lights wins. Entire tiles are shaded, preserving a stepped pixel-art
+edge. Black void always remains opaque regardless of nearby lights.
 The torch PNG is generated pixel art with transparency.
 House artwork comes exclusively from the existing Outdoors tileset;
 tools/build_cottage_tiles.ps1 reproducibly assembles the individual PNGs.
@@ -49,24 +53,26 @@ cells. Do not append actors outside the layered stack.
 
 `ExplorationMap` in `world_map.dart` supplies rectangular map dimensions, spawn,
 buildings, scenery, torches, NPCs, and roads. The text-defined Cresca map
-occupies 55×55 cells (3025), compared with the original testing map's 20×20 (400).
+occupies 55Ã—55 cells (3025), compared with the original testing map's 20Ã—20 (400).
 The settlement's building bounds are centered at (27.5,27), within half a tile of
 the cavern's center (27.5,27.5), with dark outskirts on every side.
 It has nine cottages, seven NPCs, a market and well, herb beds, benches, signs,
 cavern fungi, and rubble beside Junto's fenced farm to the west. Its rocky perimeter
 and solid scenery have explicit collision, independent of their artwork.
 Town streets use the existing `blocks__cobblestone_bricks.png.png` ground tile,
-one 16×16 image per road cell, on the road layer above the rough granite floor.
+one 16Ã—16 image per road cell, on the road layer above the rough granite floor.
 The paving connects every doorstep, both main streets, and the market junction.
 
-The player starts at zero-based (20,25), directly south of their home door. The
-stranger at (21,25) offers travel to the testing grounds at (10,10). The Waykeeper
+The player starts on cushions at (16,16) in `crescaIndoors`. Its front exit returns
+to (20,25) in town, directly south of the home door. Town door gate 6 at (20,24)
+returns to the interior at (20,26). Both use circular cover/swap/reveal transitions.
+The stranger at (21,25) offers travel to the testing grounds at (10,10). The Waykeeper
 at (11,10) there offers the return trip. Travel changes the map within the same
 exploration session, preserving the player and inventory. Each arrival resets
-local residents to their initial routine positions. Houses remain closed.
+local residents to their initial routine positions. The other houses remain closed.
 
-Every street in the town core lies within a torch's fully visible radius without
-relying on the player's light. The north, east, and south roads continue to the
+Roadside torches light the town core alongside the player's own light.
+The north, east, and south roads continue to the
 map boundaries with no additional torches; their far ends are dark. Those road
 openings pass through the cavern rim. The north road enters Route 1; the other
 three town boundaries wrap to the opposite side as transition test points. Torches occupy
@@ -123,6 +129,38 @@ and roof layering are unchanged.
 The inn's explicit `BuildingAppearance.inn` uses violet walls, sea-green shingles,
 a small glowing roof window, and a striped canopy. Its solid, readable sign at
 (35,25) names THE RESTING LANTERN and advertises rooms and warm meals on page two.
+
+## Cresca interiors
+
+`cresca-indoors/` uses the same four text layers and shared loader as every other
+area. Its 110x110 grid has nine separated rooms, each with 12x12 interior floor
+cells. Only the player's room has an active gate. Room geometry, furnishing
+positions, spawn, and travel coordinates all come from the text files.
+
+`IndoorTerrain` renders `W` using existing Puny World wooden panels and `x`
+using the existing castle masonry atlas, without procedural embellishments.
+`#` has no floor and blocks movement; the atmosphere paints it fully black after
+all lights and actors, preventing glow from leaking outside rooms. Furniture
+uses the shared scenery entries: `T` tables, `t` chairs, `B` bookcases, `R` rugs,
+`k` sleeping cushions, and `D` doorways. Rugs and cushions sit below actors;
+tables and bookcases are solid. Each chair has `solid: false` in the objects
+legend and is walkable. Existing scenery symbols still work.
+
+`StockPropSprite` shares the imported art lookup between Route 1 and interiors.
+Rock variants, crates, and flowers come from Idylwild's foliage pack; benches
+come from the castle atlas, and doors reuse the cottage doorway. The available
+assets do not provide suitable tables, chairs, cushions, rugs, or bookcases, so
+these render as plain tiles bearing their names, including screen-reader labels.
+
+`mode: "door"` gates are independent of NPC travel gates and can overlap a
+solid building footprint. Adjacent taps, the interaction control / E / Space,
+and movement into the door all enter through the shared `_travel` lifecycle.
+The indoor walk exit lands outside the home; re-entry lands inside, one tile
+away from the exit trigger. Neither arrival can immediately trigger a return.
+
+Validation: `flutter test test/cresca_indoors_test.dart` checks room size and
+separation, void collision and black pixels, cushion spawn, valid travel arrivals,
+and all four door interaction methods. It writes `build/cresca-home-start.png`.
 
 ## Area transitions
 
@@ -219,8 +257,8 @@ Sand is drawn below props and gates even when the object layer contains
 Collision depends only on the object map. Floor `=` marks paved roads.
 
 `route_one_scenery.dart` uses cave-sheet rock for walls, the castle atlas's closed
-chest, and the imported sand and grass tiles. Boulders are large, jagged sprites
-drawn on a 16×20 pixel grid with stable shape variants. Their visuals overhang a
+chest, and the imported sand and grass tiles. Boulders use two existing foliage-pack
+rock sprites with stable variant selection. Their visuals overhang a
 quarter tile upward while collision remains one cell and depth uses their feet.
 
 Ground grass sits at z=10. `GrassCoveredSprite` attaches the lower-half grass

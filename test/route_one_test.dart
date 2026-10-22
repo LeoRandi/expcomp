@@ -208,7 +208,11 @@ void main() {
     expect(map.tileAt(26, 54), '-');
     expect(map.floorAt(26, 54), '.');
     expect(map.isSolid(26, 54), isFalse);
-    expect(map.floorAt(54, 4), '-', reason: 'The eastern gate has stone ground.');
+    expect(
+      map.floorAt(54, 4),
+      '-',
+      reason: 'The eastern gate has stone ground.',
+    );
     final floors = floorSource.trimRight().split(RegExp(r'\r?\n'));
     for (var y = 0; y < map.rows; y++) {
       for (var x = 0; x < map.columns; x++) {
@@ -351,7 +355,7 @@ void main() {
           theme: ThemeData(extensions: [SunderedKeepUi.theme]),
           home: RepaintBoundary(
             key: screen,
-            child: ExplorationPage(player: player),
+            child: ExplorationPage(player: player, initialArea: WorldArea.town),
           ),
         ),
       );
