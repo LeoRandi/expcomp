@@ -27,12 +27,12 @@ void main() {
     },
   );
 
-  test('Each demo player owns an independent seeded inventory', () {
+  test('New players start with independent empty inventories', () {
     final first = Player.demo();
     final second = Player.demo();
-    expect(first.inventory.items, {meat: 1, moonlessNecklace: 2});
-    first.inventory.remove(meat);
-    expect(second.inventory.quantityOf(meat), 1);
+    expect(first.inventory.items, isEmpty);
+    first.inventory.add(meat);
+    expect(second.inventory.items, isEmpty);
     expect(Player().inventory.items, isEmpty);
   });
 }

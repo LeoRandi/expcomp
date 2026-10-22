@@ -24,9 +24,12 @@ component details. Its game-specific item integrations and debug-only route
 describe the UI components used by the game.
 Asset provenance notes are preserved in the READMEs under `assets/`.
 
-The provisional world outline is in [docs/story.md](docs/story.md). Town layout,
-residents and dialogue live in `lib/exploration/cresca_town.dart`; the original
-20×20 testing map remains in `cresca_map.dart`, with its NPCs in `world_map.dart`.
+The provisional world outline is in [docs/story.md](docs/story.md). All areas use
+[four independent text maps](assets/text-maps/README.md): objects/NPCs, floor,
+chests, and gates. Cresca, testing, and Route 1 each have their own folder under
+`assets/text-maps/`, loaded through one shared parser. NPC legends contain names,
+dialogue, sprites, tints, patrols, and actions; gate legends own all travel links.
+New players start with an empty inventory.
 
 Cresca sits in the middle of a 55×55 cavern (3,025 tiles).
 Torches stand beside the cobblestone roads. Start outside your
@@ -58,12 +61,15 @@ Town cottage doors are one movement tile tall. The Resting Lantern inn has
 violet timber, a sea-green roof, a striped canopy, and a readable name sign.
 
 Cresca's north road enters Route 1, loaded directly from
-[the object map](assets/text-maps/r1.txt) and
-[floor layer](assets/text-maps/r1-floor.txt). Its southern gate returns to town.
+[the object map](assets/text-maps/r1/r1-objects.txt) and
+[floor layer](assets/text-maps/r1/r1-floor.txt). Its southern gate returns to town.
+Travel destinations and arrival coordinates come from
+[the gate map](assets/text-maps/r1/r1-gates.txt).
 The route includes cave walls, sand paths, grass that covers the player's lower
-half throughout movement, a closed cottage, jagged rocks, and decorative closed chests.
-Sand paths continue beneath props and gates. Rocks, chests,
-and the house have no interactions; the other route gates are placeholders.
+half throughout movement, a closed cottage, jagged rocks, and chests with one-time rewards.
+Sand paths continue beneath props and gates. Chest rewards come from
+[the numbered chest map](assets/text-maps/r1/r1-chests.txt); opened chests stay empty.
+Rocks and the house have no interactions; the other route gates are placeholders.
 The east, south, and west town boundaries still wrap to the opposite town edge.
 Each crossing has a 1.2-second directional blackout followed by a 1.2-second opposing reveal. The stranger and Waykeeper use a circular close/reopen instead.
 The entire screen, including the header and controls, is covered; input and NPC

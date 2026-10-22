@@ -16,7 +16,7 @@ import 'cresca_town.dart';
 import 'area_arrival_title.dart';
 import 'area_transition.dart';
 import 'building_tile.dart';
-import 'route_one.dart';
+import 'world_maps.dart';
 import 'route_one_scenery.dart';
 import 'town_scenery.dart';
 import 'world_layers.dart';
@@ -54,11 +54,7 @@ class _ExplorationPageState extends State<ExplorationPage>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   static const visibleCells = 8.4;
   late ExplorationMap _map;
-  final _loadedMaps = <WorldArea, ExplorationMap>{
-    WorldArea.town: crescaTown,
-    WorldArea.testing: testingMap,
-  };
-  bool _initialMapReady = true;
+  bool _initialMapReady = false;
   bool _initialMapLoading = false;
   late int _column;
   late int _row;
@@ -89,10 +85,11 @@ class _ExplorationPageState extends State<ExplorationPage>
       duration: areaTransitionDuration,
       animationBehavior: AnimationBehavior.preserve,
     );
-    _enterMap(
-      widget.initialArea == WorldArea.testing ? testingMap : crescaTown,
-    );
-    _initialMapReady = widget.initialArea != WorldArea.routeOne;
+    final cached = cachedWorldMap(widget.initialArea);
+    if (cached != null) {
+      _enterMap(cached);
+      _initialMapReady = true;
+    }
     _routineTimer = Timer.periodic(const Duration(milliseconds: 1600), (_) {
       if (!_initialMapReady ||
           _transitioning ||
@@ -137,8 +134,6 @@ class _ExplorationPageState extends State<ExplorationPage>
   Future<void> _loadInitialMap() async {
     final map = await _resolveMap(widget.initialArea);
     if (!mounted) return;
-    await _preloadMap(map);
-    if (!mounted) return;
     setState(() {
       _enterMap(map);
       _initialMapReady = true;
@@ -146,11 +141,7 @@ class _ExplorationPageState extends State<ExplorationPage>
   }
 
   Future<ExplorationMap> _resolveMap(WorldArea area) async {
-    final cached = _loadedMaps[area];
-    if (cached != null) return cached;
-    final map = await loadRouteOne(DefaultAssetBundle.of(context));
-    _loadedMaps[area] = map;
-    return map;
+    return loadWorldMap(area, DefaultAssetBundle.of(context));
   }
 
   void _enterMap(ExplorationMap map) {
@@ -264,6 +255,47 @@ class _ExplorationPageState extends State<ExplorationPage>
     return null;
   }
 
+  MapProp? get _nearbyChest {
+    for (final prop in _map.props) {
+      if (prop.chest != null &&
+          (prop.position.dx - _column).abs() +
+                  (prop.position.dy - _row).abs() ==
+              1) {
+        return prop;
+      }
+    }
+    return null;
+  }
+
+  void _openChest(MapProp prop) {
+    if (_transitioning ||
+        _dialogueOpen ||
+        _window != null ||
+        (prop.position.dx - _column).abs() + (prop.position.dy - _row).abs() !=
+            1) {
+      return;
+    }
+    final contents = prop.chest;
+    if (contents == null) return;
+    _stopDirectionHold();
+    final first = _player.openChest(
+      contents.id,
+      item: contents.item,
+      quantity: contents.quantity,
+    );
+    setState(() {});
+    _showDialogue(
+      title: 'Chest',
+      role: '',
+      isChest: true,
+      lines: [
+        first && contents.item != null
+            ? 'You got a ${contents.item!.name} x ${contents.quantity}'
+            : "It's empty...",
+      ],
+    );
+  }
+
   void _readSign(MapProp sign) {
     if ((sign.position.dx - _column).abs() + (sign.position.dy - _row).abs() !=
         1) {
@@ -282,6 +314,8 @@ class _ExplorationPageState extends State<ExplorationPage>
     final npc = _nearbyNpc;
     if (npc != null) {
       _showNpcDialogue(npc);
+    } else if (_nearbyChest != null) {
+      _openChest(_nearbyChest!);
     } else {
       final sign = _nearbySign;
       if (sign != null) _readSign(sign);
@@ -340,6 +374,11 @@ class _ExplorationPageState extends State<ExplorationPage>
     final nextRow = (_row + dy).clamp(0, _map.rows - 1);
     if (nextColumn == _column && nextRow == _row) return;
     for (final prop in _map.props) {
+      if (prop.chest != null &&
+          prop.position == Offset(nextColumn.toDouble(), nextRow.toDouble())) {
+        _openChest(prop);
+        return;
+      }
       if (prop.isReadable &&
           prop.position == Offset(nextColumn.toDouble(), nextRow.toDouble())) {
         _readSign(prop);
@@ -396,6 +435,9 @@ class _ExplorationPageState extends State<ExplorationPage>
     portraitAsset: npc.asset,
     tint: npc.tint,
     action: npc.action,
+    travelExit: npc.gate == null
+        ? null
+        : _map.gates.singleWhere((gate) => gate.number == npc.gate).exit,
   );
 
   Future<void> _showDialogue({
@@ -405,7 +447,9 @@ class _ExplorationPageState extends State<ExplorationPage>
     String? portraitAsset,
     Color? tint,
     NpcAction action = NpcAction.talk,
+    AreaExit? travelExit,
     bool isSign = false,
+    bool isChest = false,
   }) async {
     if (_transitioning || _dialogueOpen || _window != null) return;
     _stopDirectionHold();
@@ -461,14 +505,16 @@ class _ExplorationPageState extends State<ExplorationPage>
                                   fontSize: PixelUiMetrics.title,
                                 ),
                               ),
-                              const SizedBox(height: 4),
-                              Text(
-                                role,
-                                style: const TextStyle(
-                                  color: Color(0xFFA9A39A),
-                                  fontSize: 12,
+                              if (role.isNotEmpty) ...[
+                                const SizedBox(height: 4),
+                                Text(
+                                  role,
+                                  style: const TextStyle(
+                                    color: Color(0xFFA9A39A),
+                                    fontSize: 12,
+                                  ),
                                 ),
-                              ),
+                              ],
                               const SizedBox(height: 16),
                               Text.rich(
                                 TextSpan(
@@ -506,7 +552,11 @@ class _ExplorationPageState extends State<ExplorationPage>
                                       ),
                                       label: switch (action) {
                                         NpcAction.battle => 'Yes',
-                                        NpcAction.testing => 'Enter',
+                                        NpcAction.travel =>
+                                          travelExit?.destination ==
+                                                  WorldArea.testing
+                                              ? 'Enter'
+                                              : 'Return',
                                         _ => 'Return',
                                       },
                                       columns: 7,
@@ -528,11 +578,13 @@ class _ExplorationPageState extends State<ExplorationPage>
                                   const SizedBox(width: 8),
                                   PixelButton(
                                     key: ValueKey(
-                                      isSign
+                                      isChest
+                                          ? 'close-chest-dialogue'
+                                          : isSign
                                           ? 'close-sign-dialogue'
                                           : 'close-npc-dialogue',
                                     ),
-                                    label: isSign
+                                    label: isSign || isChest
                                         ? 'Close'
                                         : action == NpcAction.battle
                                         ? 'No'
@@ -556,16 +608,19 @@ class _ExplorationPageState extends State<ExplorationPage>
         ),
       );
       final accepted = await Navigator.of(context).push<bool>(route);
-      if (accepted == true &&
-          (action == NpcAction.testing || action == NpcAction.town)) {
+      if (accepted == true && action == NpcAction.travel) {
         await route.completed;
       }
       if (accepted == true && mounted) {
         switch (action) {
-          case NpcAction.testing:
-            await _travel(WorldArea.testing);
-          case NpcAction.town:
-            await _travel(WorldArea.town);
+          case NpcAction.travel:
+            if (travelExit != null) {
+              await _travel(
+                travelExit.destination,
+                arrival: travelExit.arrival,
+                style: travelExit.style,
+              );
+            }
           case NpcAction.battle:
             await Navigator.of(
               context,
@@ -808,11 +863,14 @@ class _ExplorationPageState extends State<ExplorationPage>
                                   alignment: Alignment.center,
                                   child: IconButton(
                                     key: const ValueKey('interact-npc'),
-                                    tooltip: _nearbySign != null
+                                    tooltip: _nearbyChest != null
+                                        ? 'Open chest (E / Space)'
+                                        : _nearbySign != null
                                         ? 'Read sign (E / Space)'
                                         : 'Talk (E / Space)',
                                     onPressed:
                                         (_nearbyNpc == null &&
+                                                _nearbyChest == null &&
                                                 _nearbySign == null) ||
                                             _dialogueOpen ||
                                             _window != null
@@ -1019,7 +1077,12 @@ class _ExplorationPageState extends State<ExplorationPage>
                             ),
                           ),
                     ...(_map.area == WorldArea.routeOne
-                        ? routeOneSceneryEntries(_map, tile)
+                        ? routeOneSceneryEntries(
+                            _map,
+                            tile,
+                            isChestOpen: _player.hasOpenedChest,
+                            onOpenChest: _openChest,
+                          )
                         : townSceneryEntries(
                             _map,
                             tile,

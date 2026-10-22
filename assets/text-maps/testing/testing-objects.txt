@@ -1,0 +1,68 @@
+--------------------
+--------------------
+--------------------
+--------------------
+--------i---hhh-----
+------------hhh-----
+--------------------
+-----hhh------------
+-----hhh------------
+----------1---i-----
+-----------2--------
+------i-------------
+--------------------
+--------------------
+--------------------
+--------------------
+-----------i--------
+--------------------
+--------------------
+--------------------
+
+---
+{
+  "area": "testing",
+  "name": "Testing grounds",
+  "subtitle": "Spar with the villager. The Waykeeper can take you home.",
+  "spawn": [
+    10,
+    10
+  ],
+  "npcs": {
+    "1": {
+      "id": "trainer",
+      "name": "Cresca Villager",
+      "role": "Sparring partner",
+      "sprite": "assets/monsters/dark_fantasy_creatures_cc0/raw_originals/03_stylized_fantasy/Wizard/wizard_8.png",
+      "action": "battle",
+      "route": [],
+      "lines": [
+        "Ready to meet your end?"
+      ]
+    },
+    "2": {
+      "id": "waykeeper",
+      "name": "The Waykeeper",
+      "role": "A familiar shadow",
+      "sprite": "assets/monsters/dark_fantasy_creatures_cc0/raw_originals/03_stylized_fantasy/Wizard/wizard_8.png",
+      "tint": "ff9692b2",
+      "action": "travel",
+      "gate": "1",
+      "route": [],
+      "lines": [
+        "Enough practice? Take my hand. I will leave you outside your home in Cresca."
+      ]
+    }
+  },
+  "buildings": {
+    "5,7": {
+      "id": "west",
+      "appearance": "cottage"
+    },
+    "12,4": {
+      "id": "east",
+      "appearance": "cottage"
+    }
+  },
+  "props": {}
+}

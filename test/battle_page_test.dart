@@ -1,3 +1,4 @@
+import 'exploration_test_support.dart';
 import 'package:expcomp/exploration/world_map.dart';
 import 'package:expcomp/main.dart';
 import 'package:expcomp/battle/battle_page.dart';
@@ -9,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  setupExplorationMaps();
   for (final size in [const Size(390, 844), const Size(800, 600)]) {
     testWidgets(
       'Two sources, stable hexagons, pulsing selection and continues beyond three rounds at $size',

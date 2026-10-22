@@ -1,3 +1,4 @@
+import 'exploration_test_support.dart';
 import 'package:expcomp/main.dart';
 import 'package:expcomp/global_presentation/pixel_ui/pixel_ui.dart';
 import 'package:expcomp/creatures/creature.dart';
@@ -7,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  setupExplorationMaps();
   testWidgets(
     'Party shows two companions, four empty slots and blocks world input',
     (tester) async {

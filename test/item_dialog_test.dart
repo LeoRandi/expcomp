@@ -1,3 +1,4 @@
+import 'exploration_test_support.dart';
 import 'package:expcomp/creatures/creature.dart';
 import 'package:expcomp/creatures/showcase_party.dart';
 import 'package:expcomp/exploration/exploration_page.dart';
@@ -5,11 +6,11 @@ import 'package:expcomp/global_presentation/pixel_ui/pixel_ui.dart';
 import 'package:expcomp/inventory/inventory.dart';
 import 'package:expcomp/inventory/inventory_menu.dart';
 import 'package:expcomp/inventory/item_catalog.dart';
-import 'package:expcomp/player/player.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  setupExplorationMaps();
   for (final size in [const Size(390, 844), const Size(800, 600)]) {
     testWidgets(
       'Item details, cancel, party choice and bag transfer at $size',
@@ -95,7 +96,7 @@ void main() {
   testWidgets(
     'Equipment persists into party details and nested dialogs close on switching',
     (tester) async {
-      final player = Player.demo();
+      final player = playerWithTestItems();
       final creature = showcaseParty.first;
       addTearDown(() => creature.unequipTo(player.inventory));
       await tester.pumpWidget(

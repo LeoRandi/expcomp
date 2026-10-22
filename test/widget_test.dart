@@ -1,3 +1,4 @@
+import 'exploration_test_support.dart';
 import 'package:expcomp/exploration/world_map.dart';
 import 'package:expcomp/main.dart';
 import 'package:flutter/material.dart';
@@ -5,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  setupExplorationMaps();
   testWidgets(
     'Camera follows across a 20 by 20 world at two-thirds tile scale',
     (tester) async {

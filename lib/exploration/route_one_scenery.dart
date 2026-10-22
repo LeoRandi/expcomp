@@ -147,8 +147,12 @@ class _GrassCoverPainter extends CustomPainter {
   bool shouldRepaint(_GrassCoverPainter old) => image != old.image;
 }
 
-/// Solid scenery only: these props intentionally have no interaction handlers.
-List<WorldEntry> routeOneSceneryEntries(ExplorationMap map, double tile) => [
+List<WorldEntry> routeOneSceneryEntries(
+  ExplorationMap map,
+  double tile, {
+  bool Function(String)? isChestOpen,
+  void Function(MapProp)? onOpenChest,
+}) => [
   for (final prop in map.props)
     WorldEntry(
       z: WorldZ.actor,
@@ -161,34 +165,76 @@ List<WorldEntry> routeOneSceneryEntries(ExplorationMap map, double tile) => [
         top: (prop.position.dy - (prop.kind == PropKind.rock ? .25 : 0)) * tile,
         width: tile,
         height: tile * (prop.kind == PropKind.rock ? 1.25 : 1),
-        child: Semantics(
-          label: prop.kind == PropKind.chest ? 'Closed chest' : 'Rock',
-          image: true,
-          child: prop.kind == PropKind.rock
-              ? RouteRockSprite(
-                  variant:
-                      (prop.position.dx.toInt() * 13 +
-                          prop.position.dy.toInt() * 7) %
-                      3,
-                )
-              : PixelAtlasBuilder(
-                  atlas: PixelAtlasDefinition(assetPath: routeOneChestAsset),
-                  builder: (context, image, error) =>
-                      CustomPaint(painter: _RouteChestPainter(image)),
-                ),
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: prop.chest == null ? null : () => onOpenChest?.call(prop),
+          child: Semantics(
+            label: prop.kind == PropKind.chest
+                ? (isChestOpen?.call(prop.chest?.id ?? '') == true
+                      ? 'Open chest'
+                      : 'Closed chest')
+                : 'Rock',
+            button: prop.chest != null,
+            image: prop.chest == null,
+            child: prop.kind == PropKind.rock
+                ? RouteRockSprite(
+                    variant:
+                        (prop.position.dx.toInt() * 13 +
+                            prop.position.dy.toInt() * 7) %
+                        3,
+                  )
+                : PixelAtlasBuilder(
+                    atlas: PixelAtlasDefinition(assetPath: routeOneChestAsset),
+                    builder: (context, image, error) => CustomPaint(
+                      painter: _RouteChestPainter(
+                        image,
+                        isChestOpen?.call(prop.chest?.id ?? '') == true,
+                      ),
+                    ),
+                  ),
+          ),
         ),
       ),
     ),
 ];
 
 class _RouteChestPainter extends CustomPainter {
-  const _RouteChestPainter(this.image);
+  const _RouteChestPainter(this.image, this.opened);
   final ui.Image? image;
+  final bool opened;
 
   @override
   void paint(Canvas canvas, Size size) {
     final texture = image;
     if (texture == null) return;
+    final paint = Paint()
+      ..filterQuality = FilterQuality.none
+      ..isAntiAlias = false;
+    if (opened) {
+      // Recompose the existing sprite into an upright lid, dark cavity and base.
+      canvas.drawImageRect(
+        texture,
+        const Rect.fromLTWH(102, 55, 20, 9),
+        Rect.fromLTWH(0, size.height * .45, size.width, size.height * .55),
+        paint,
+      );
+      canvas.drawRect(
+        Rect.fromLTWH(
+          size.width * .08,
+          size.height * .32,
+          size.width * .84,
+          size.height * .25,
+        ),
+        Paint()..color = const Color(0xFF241C22),
+      );
+      canvas.drawImageRect(
+        texture,
+        const Rect.fromLTWH(102, 48, 20, 7),
+        Rect.fromLTWH(0, 0, size.width, size.height * .32),
+        paint,
+      );
+      return;
+    }
     canvas.drawImageRect(
       texture,
       const Rect.fromLTWH(102, 48, 20, 16),
@@ -200,7 +246,8 @@ class _RouteChestPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_RouteChestPainter old) => image != old.image;
+  bool shouldRepaint(_RouteChestPainter old) =>
+      image != old.image || opened != old.opened;
 }
 
 /// A full-width, pointed 16x20 pixel rock with stable, varied silhouettes.

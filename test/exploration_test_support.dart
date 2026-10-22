@@ -2,17 +2,32 @@ import 'package:expcomp/exploration/cresca_town.dart';
 import 'package:expcomp/exploration/world_map.dart';
 import 'package:expcomp/exploration/route_one.dart';
 import 'package:expcomp/exploration/route_one_scenery.dart';
+import 'package:expcomp/exploration/world_maps.dart';
+import 'package:expcomp/player/player.dart';
+import 'package:expcomp/inventory/item_catalog.dart';
 import 'package:expcomp/global_presentation/pixel_ui/pixel_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+void setupExplorationMaps() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  setUpAll(() => loadAllWorldMaps(rootBundle));
+}
+
+Player playerWithTestItems() => Player()
+  ..inventory.add(meat)
+  ..inventory.add(moonlessNecklace, 2);
+
 /// Decode real bundled art outside the widget test's fake clock, as the game
 /// does while its covering animation runs in real time.
 Future<void> warmExplorationAssets(WidgetTester tester) async {
   await tester.runAsync(() async {
+    await loadAllWorldMaps(rootBundle);
     await rootBundle.loadString(routeOneTextAsset);
     await rootBundle.loadString(routeOneFloorAsset);
+    await rootBundle.loadString(routeOneChestsAsset);
+    await rootBundle.loadString(routeOneGatesAsset);
     final paths = {
       SunderedKeepUi.theme.atlas.assetPath,
       crescaPavingAsset,
@@ -78,8 +93,9 @@ Future<void> stepExploration(WidgetTester tester, Offset direction) async {
 Future<void> walkExplorationTo(
   WidgetTester tester,
   Offset target, {
-  ExplorationMap map = crescaTown,
+  ExplorationMap? map,
 }) async {
+  map ??= crescaTown;
   final start = explorationPlayerTile(tester);
   final blockedActors = {
     for (final npc in map.npcs) ...[npc.position, ...npc.route],

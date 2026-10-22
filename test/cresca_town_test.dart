@@ -8,13 +8,13 @@ import 'package:expcomp/exploration/world_lighting.dart';
 import 'package:expcomp/exploration/world_map.dart';
 import 'package:expcomp/global_presentation/pixel_ui/pixel_ui.dart';
 import 'package:expcomp/main.dart';
-import 'package:expcomp/player/player.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  setupExplorationMaps();
   setUp(PixelAtlasCache.clear);
   test(
     'Centered town in a 55 by 55 cavern with clear streets and roadside torches',
@@ -175,7 +175,7 @@ void main() {
     'Stranger round trip preserves inventory and the battle interaction',
     (tester) async {
       await warmExplorationAssets(tester);
-      final player = Player.demo();
+      final player = playerWithTestItems();
       final inventory = player.inventory;
       await tester.pumpWidget(
         MaterialApp(

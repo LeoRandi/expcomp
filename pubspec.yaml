@@ -3,7 +3,7 @@ description: "A new Flutter project."
 
 publish_to: 'none'
  
-version: 0.0.11
+version: 0.0.12
 
 environment:
   sdk: ^3.9.2
@@ -23,8 +23,9 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/text-maps/r1.txt
-    - assets/text-maps/r1-floor.txt
+    - assets/text-maps/r1/
+    - assets/text-maps/cresca/
+    - assets/text-maps/testing/
     - assets/pixel_ui/showcase/sheets_16grid/07_overworld_mixto/16x16_Overworld_Tiles/tiles__sand1.png.png
     - assets/pixel_ui/showcase/sheets_16grid/07_overworld_mixto/16x16_Overworld_Tiles/tiles__grass1.png.png
     - assets/overworld/torch.png

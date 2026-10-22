@@ -1,3 +1,4 @@
+import 'exploration_test_support.dart';
 import 'package:expcomp/exploration/world_map.dart';
 import 'package:expcomp/exploration/cresca_map.dart';
 import 'package:expcomp/main.dart';
@@ -6,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  setupExplorationMaps();
   test('Two solid houses fit in the map and are reached by the road', () {
     expect(crescaHouses.length, 2);
     for (final house in crescaHouses) {

@@ -2,10 +2,27 @@ import 'dart:ui';
 
 import 'cresca_map.dart';
 import 'area_transition.dart';
+import 'chest_contents.dart';
+export 'world_maps.dart' show testingMap;
 
 enum WorldArea { town, testing, routeOne }
 
-enum NpcAction { talk, testing, town, battle }
+enum NpcAction { talk, travel, battle }
+
+class MapGate {
+  const MapGate({
+    required this.number,
+    required this.destinationName,
+    required this.trigger,
+    required this.automatic,
+    this.exit,
+  });
+  final String number;
+  final String destinationName;
+  final Rect trigger;
+  final bool automatic;
+  final AreaExit? exit;
+}
 
 class AreaExit {
   const AreaExit({
@@ -37,6 +54,7 @@ class TownNpc {
     this.action = NpcAction.talk,
     this.route = const [],
     this.tint,
+    this.gate,
   });
 
   final String id;
@@ -46,6 +64,7 @@ class TownNpc {
   final List<String> lines;
   final String asset;
   final NpcAction action;
+  final String? gate;
 
   /// A closed loop of adjacent cells, starting at [position].
   final List<Offset> route;
@@ -75,12 +94,15 @@ class MapProp {
     this.label,
     this.solid = false,
     this.lines = const [],
+    this.chest,
   });
   final PropKind kind;
   final Offset position;
   final String? label;
   final bool solid;
   final List<String> lines;
+
+  final ChestContents? chest;
 
   bool get isReadable => lines.isNotEmpty;
   bool get isFence => kind == PropKind.fence || kind == PropKind.gate;
@@ -97,12 +119,13 @@ class ExplorationMap {
     required this.buildings,
     required this.torches,
     required this.npcs,
-    required this.roadAt,
+    this.roadAt,
     this.props = const [],
-    this.exits = const [],
+    List<AreaExit> exits = const [],
+    this.gates = const [],
     this.cells,
     this.floorCells,
-  });
+  }) : _exits = exits;
 
   final WorldArea area;
   final String name;
@@ -114,8 +137,14 @@ class ExplorationMap {
   final List<Offset> torches;
   final List<TownNpc> npcs;
   final List<MapProp> props;
-  final List<AreaExit> exits;
-  final bool Function(int, int) roadAt;
+  final List<AreaExit> _exits;
+  final List<MapGate> gates;
+  List<AreaExit> get exits => [
+    ..._exits,
+    for (final gate in gates)
+      if (gate.automatic && gate.exit != null) gate.exit!,
+  ];
+  final bool Function(int, int)? roadAt;
 
   /// Optional text terrain; cell coordinates are shared by art and collision.
   final List<String>? cells;
@@ -149,49 +178,10 @@ class ExplorationMap {
   }
 
   /// Road openings cut through the cavern rim to the map boundary.
-  bool isCavernWall(int column, int row) =>
-      tileAt(column, row) == 'X' ||
-      (area == WorldArea.town &&
-          (column == 0 ||
-              column == columns - 1 ||
-              row <= 1 ||
-              row == rows - 1) &&
-          !roadAt(column, row));
+  bool isCavernWall(int column, int row) => tileAt(column, row) == 'X';
 
   bool isRoad(int column, int row) =>
-      !isSolid(column, row) && roadAt(column, row);
+      !isSolid(column, row) &&
+      (roadAt?.call(column, row) ??
+          const ['.', '='].contains(floorAt(column, row)));
 }
-
-const testingMap = ExplorationMap(
-  area: WorldArea.testing,
-  name: 'Testing grounds',
-  subtitle: 'Spar with the villager. The Waykeeper can take you home.',
-  columns: 20,
-  rows: 20,
-  spawn: Offset(10, 10),
-  buildings: crescaBuildings,
-  torches: crescaTorches,
-  roadAt: isRoadTile,
-  npcs: [
-    TownNpc(
-      id: 'trainer',
-      name: 'Cresca Villager',
-      role: 'Sparring partner',
-      position: Offset(10, 9),
-      lines: ['Ready to meet your end?'],
-      action: NpcAction.battle,
-    ),
-    TownNpc(
-      id: 'waykeeper',
-      name: 'The Waykeeper',
-      role: 'A familiar shadow',
-      position: Offset(11, 10),
-      asset: '${characterAssets}Wizard/wizard_8.png',
-      tint: Color(0xFF9692B2),
-      lines: [
-        'Enough practice? Take my hand. I will leave you outside your home in Cresca.',
-      ],
-      action: NpcAction.town,
-    ),
-  ],
-);

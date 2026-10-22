@@ -1,12 +1,13 @@
+import 'exploration_test_support.dart';
 import 'package:expcomp/exploration/exploration_page.dart';
 import 'package:expcomp/global_presentation/pixel_ui/pixel_ui.dart';
 import 'package:expcomp/inventory/item.dart';
-import 'package:expcomp/player/player.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  setupExplorationMaps();
   for (final size in [const Size(390, 844), const Size(800, 600)]) {
     testWidgets('App bar switches windows and nested details at $size', (
       tester,
@@ -18,7 +19,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           theme: ThemeData(extensions: [SunderedKeepUi.theme]),
-          home: ExplorationPage(player: Player.demo()),
+          home: ExplorationPage(player: playerWithTestItems()),
         ),
       );
       await tester.pumpAndSettle();
@@ -90,7 +91,7 @@ void main() {
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
-      final player = Player.demo();
+      final player = playerWithTestItems();
       const ration = Item(
         id: 'ration',
         name: 'Ration',

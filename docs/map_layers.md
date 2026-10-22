@@ -48,7 +48,7 @@ cells. Do not append actors outside the layered stack.
 ## Starting town and travel
 
 `ExplorationMap` in `world_map.dart` supplies rectangular map dimensions, spawn,
-buildings, scenery, torches, NPCs, and roads. `crescaTown` in `cresca_town.dart`
+buildings, scenery, torches, NPCs, and roads. The text-defined Cresca map
 occupies 55×55 cells (3025), compared with the original testing map's 20×20 (400).
 The settlement's building bounds are centered at (27.5,27), within half a tile of
 the cavern's center (27.5,27.5), with dark outskirts on every side.
@@ -195,17 +195,28 @@ every screen pixel is black, including the header and buttons.
 
 ## Route 1 template
 
-`route_one.dart` loads `assets/text-maps/r1.txt` for objects and
-`assets/text-maps/r1-floor.txt` for ground, validates matching rectangular grids
-and 2-row by 3-column house footprints, and builds the map's collision, torches,
-props, and return gate. Text cells are available through
+All areas are loaded by `world_maps.dart` through the shared `text_map_loader.dart`.
+Each area has four matching grids: objects/NPCs, floor, chests, and gates, with
+JSON legends below object and gate grids. See the complete
+[format and area file index](../assets/text-maps/README.md). The old Cresca/testing
+accessors and `route_one.dart` are thin wrappers, with no duplicate layout data.
+
+Route 1 uses `r1/r1-objects.txt`, `r1/r1-floor.txt`, `r1/r1-chests.txt`, and
+`r1/r1-gates.txt`. The shared loader validates the rectangle, house footprints,
+NPC and gate references, and builds collision, lights, props, and travel links.
+`r1/r1-chests.txt` supplies numbered
+chest coordinates and plain-text item assignments from the inventory catalog.
+Text cells are available through
 `ExplorationMap.tileAt`; `X`, `r`, `h`, and `C` are solid. The house uses the same
 3x3 cottage art as Cresca, with its roof projected above the 3x2 `h` footprint.
 
 `ExplorationMap.floorAt` reads the independent floor layer: `.` is sand and `-`
-is granite. Floor draft `X`/`0` markers normalize to granite; they never add walls
-or gates. Sand is drawn below props and gates even when the object layer contains
-`r`, `C`, `i`, or `0` at that coordinate. Collision depends only on the object map.
+is granite. Route 1's objects use `-` for empty cells regardless of their floor;
+its floor, chest, and gate maps do not copy wall markers. Older floor draft
+`X`/`0` markers remain accepted as granite; they never add walls or gates.
+Sand is drawn below props and gates even when the object layer contains
+`r`, `C`, or `i` at that coordinate, or the gate layer marks an entrance.
+Collision depends only on the object map. Floor `=` marks paved roads.
 
 `route_one_scenery.dart` uses cave-sheet rock for walls, the castle atlas's closed
 chest, and the imported sand and grass tiles. Boulders are large, jagged sprites
@@ -222,12 +233,25 @@ remain above the complete player sprite and its cover.
 Cresca's north exit arrives at (27,53). Route 1's southern gate at (26..28,54)
 returns to (29,1) in Cresca. Both use the full cover/swap/reveal lifecycle. Text
 and art preload during the cover; the black frame waits until they are ready.
-The other `0` openings are inactive placeholders. Rocks and chests are solid
-scenery, the house stays closed, and no encounters or item rewards are attached.
+The other numbered gates are inactive placeholders. Gate legends also own NPC
+teleports, including the Veiled Stranger and Waykeeper; NPC travel actions
+reference a gate number instead of hardcoded destinations. Rocks remain solid
+scenery and the house stays closed. Chests are solid
+interactables: rewards are claimed once per stable chest ID on the Player, before
+showing a message. Empty and previously opened chests show `It's empty...`;
+reward messages use `You got a <item name> x <amount>`. The sprite switches to a
+raised lid and dark cavity. Opening works by bump, adjacent tap, or the interaction
+button / E / Space and cancels held movement. Player state preserves opened
+chests across travel and map reloads. Grass still causes no encounters.
 
 Validation: `flutter test test/route_one_test.dart` covers text/collision parity,
-house geometry, inert props, both travel directions at desktop and portrait
+house geometry, chest rewards/empty state/revisits, both travel directions at desktop and portrait
 sizes, independent sand beneath props/gates, lower-half grass pixels, and cover
 alignment throughout vertical movement into, between, and out of grass cells. It
 also writes `build/route1-grass.png`, `build/route1-chest.png`, and
 `build/route1-house.png`, and `build/route1-rocks.png` for visual review.
+
+New players start empty. Item UI tests explicitly seed their fixtures; production
+player creation does not add Meat or necklaces. `test/text_map_loader_test.dart`
+checks all four-layer bundles, independent edits to floor/NPC/gate data, disabled
+future gates, invalid legends/dimensions, and the empty starting inventory.

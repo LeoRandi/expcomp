@@ -28,6 +28,7 @@ Future<void> _testingArea(WidgetTester tester) async {
 }
 
 void main() {
+  setupExplorationMaps();
   setUp(PixelAtlasCache.clear);
 
   testWidgets(

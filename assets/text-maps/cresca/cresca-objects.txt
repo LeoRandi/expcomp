@@ -1,0 +1,465 @@
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXX--XXXXXXXXXXXXXXXXXXXXXXXX
+X-----------------------------------------------------X
+X-----------------------------------------------------X
+X-----------------------------------------------------X
+X-----------------------------------------------------X
+X-----------------------------------------------------X
+X-----------------------------------------------------X
+X-----------------------------------------------------X
+X-----------------------------------------------------X
+X-----------------------------------------------------X
+X---------------------------S-------------------------X
+X-----------------------------------------------------X
+X-----------------------------------------------------X
+X-----------------------------------------------------X
+X-----------------------------------------------------X
+X-----------------------------------------------------X
+X-----------------------------------------------------X
+X---------FFFF----------------------------------------X
+X---------F-vF----------------------------------------X
+X---------F--GS---------------------------------------X
+X---------FfvF---------f-------------f----------------X
+X---------FFFF--f-----------i4-i------------f---------X
+X---------u-------------------------------------------X
+X----------uhhh----hhh----hhh----hhh----hhh----f------X
+X-----------hhh----hhh----hhh--i-hhh----hhh-----------X
+X---------ui---i---v-1i--i--i---i--Si-----i------S----X
+--------------2--------------------7-------------------
+-----------------------3----------6--------------------
+X---------------vb------cs-s-w--b------v--------------X
+X----------i------i---------i---i----i----------------X
+X-------------hhh----hhh---------hhh----hhh-----------X
+X-------------hhh----hhh---------hhhc---hhh-----------X
+X--------------------------------------5--------------X
+X------------ipppi---i---i--i----i---i--ppp---f-------X
+X---------f-------------------------------------------X
+X-----------------f--------f----------f---------------X
+X-----------------------------------------------------X
+X-----------------------------------------------------X
+X-----------------------------------------------------X
+X-----------------------------------------------------X
+X-----------------------------------------------------X
+X-----------------------------------------------------X
+X-----------------------------------------------------X
+X------------------------------S----------------------X
+X-----------------------------------------------------X
+X-----------------------------------------------------X
+X-----------------------------------------------------X
+X-----------------------------------------------------X
+X-----------------------------------------------------X
+X-----------------------------------------------------X
+X-----------------------------------------------------X
+X-----------------------------------------------------X
+X-----------------------------------------------------X
+X-----------------------------------------------------X
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXX--XXXXXXXXXXXXXXXXXXXXXXXX
+
+---
+{
+  "area": "town",
+  "name": "Cresca",
+  "subtitle": "Your home • Keep to the torchlit streets",
+  "spawn": [
+    20,
+    25
+  ],
+  "npcs": {
+    "1": {
+      "id": "stranger",
+      "name": "The Veiled Stranger",
+      "role": "Waiting for you",
+      "sprite": "assets/monsters/dark_fantasy_creatures_cc0/raw_originals/03_stylized_fantasy/Wizard/wizard_8.png",
+      "tint": "ff827c9d",
+      "action": "travel",
+      "gate": "5",
+      "route": [],
+      "lines": [
+        "So, the youngest finally steps outside. I know a place where you can test your companions. Take my hand; the Waykeeper there will bring you home."
+      ]
+    },
+    "2": {
+      "id": "mara",
+      "name": "Mara",
+      "role": "Baker • Early riser",
+      "sprite": "assets/monsters/dark_fantasy_creatures_cc0/raw_originals/03_stylized_fantasy/Ranger_64x64/ranger_t.png",
+      "tint": "ffe2bb90",
+      "action": "talk",
+      "route": [],
+      "lines": [
+        "Up already, youngest? I have been feeding this street since before you could reach my counter. Follow the smell of bread back home.",
+        "Nessa trades herbs for bread, and Ivo stops by after his lamp rounds. In Cresca, someone notices when you miss breakfast.",
+        "Cresca is the only safe place for miles. We still hear from the towns south and east, but anyone carrying supplies between us takes a risk."
+      ]
+    },
+    "3": {
+      "id": "ivo",
+      "name": "Ivo",
+      "role": "Lamplighter",
+      "sprite": "assets/monsters/dark_fantasy_creatures_cc0/raw_originals/03_stylized_fantasy/Ranger_64x64/ranger_t.png",
+      "tint": "ffd7ae79",
+      "action": "talk",
+      "route": [
+        [
+          23,
+          27
+        ],
+        [
+          24,
+          27
+        ],
+        [
+          25,
+          27
+        ],
+        [
+          26,
+          27
+        ],
+        [
+          25,
+          27
+        ],
+        [
+          24,
+          27
+        ]
+      ],
+      "lines": [
+        "Oil, wick, flame. Follow my lamps through town; the tunnels beyond them are for the beasts."
+      ]
+    },
+    "4": {
+      "id": "tamsin",
+      "name": "Tamsin",
+      "role": "Watchkeeper",
+      "sprite": "assets/monsters/dark_fantasy_creatures_cc0/raw_originals/03_stylized_fantasy/Swordsman_64x64/swordsman_t_0.png",
+      "action": "talk",
+      "route": [
+        [
+          29,
+          21
+        ],
+        [
+          30,
+          21
+        ],
+        [
+          30,
+          22
+        ],
+        [
+          29,
+          22
+        ]
+      ],
+      "lines": [
+        "This is the old road to Lubia. The rumbling broke the safe northern routes. Turn back before the lamps run out.",
+        "We are searching for another safe way north. Until then, the dark passages belong to beasts and things from old tales."
+      ]
+    },
+    "5": {
+      "id": "nessa",
+      "name": "Nessa",
+      "role": "Herbalist",
+      "sprite": "assets/monsters/dark_fantasy_creatures_cc0/raw_originals/03_stylized_fantasy/Ranger_64x64/ranger_t.png",
+      "tint": "ffa8cca1",
+      "action": "talk",
+      "route": [
+        [
+          39,
+          32
+        ],
+        [
+          40,
+          32
+        ],
+        [
+          41,
+          32
+        ],
+        [
+          42,
+          32
+        ],
+        [
+          41,
+          32
+        ],
+        [
+          40,
+          32
+        ]
+      ],
+      "lines": [
+        "Mind the herb beds! Mara brings me bread; I keep our neighbours well.",
+        "Beasts are filling the tunnels, and people are seeing monsters from old tales. Take care out there."
+      ]
+    },
+    "6": {
+      "id": "pell",
+      "name": "Pell",
+      "role": "Market runner",
+      "sprite": "assets/monsters/dark_fantasy_creatures_cc0/raw_originals/03_stylized_fantasy/Ranger_64x64/ranger_t.png",
+      "tint": "ffd8b5a2",
+      "action": "talk",
+      "route": [
+        [
+          34,
+          27
+        ],
+        [
+          35,
+          27
+        ],
+        [
+          36,
+          27
+        ],
+        [
+          37,
+          27
+        ],
+        [
+          36,
+          27
+        ],
+        [
+          35,
+          27
+        ]
+      ],
+      "lines": [
+        "Three deliveries for the inn, two for the potter, and one I have forgotten. Do not tell Mara."
+      ]
+    },
+    "7": {
+      "id": "elin",
+      "name": "Elin",
+      "role": "Keeper of the Resting Lantern",
+      "sprite": "assets/monsters/dark_fantasy_creatures_cc0/raw_originals/03_stylized_fantasy/Wizard/wizard_8.png",
+      "tint": "ffbfc5df",
+      "action": "talk",
+      "route": [],
+      "lines": [
+        "The Resting Lantern has a warm meal for anyone who reaches Cresca. Sit down; Pell will bring the supplies eventually.",
+        "We still get news from the south and east. Nothing from the north since the rumbling closed the routes."
+      ]
+    }
+  },
+  "buildings": {
+    "12,23": {
+      "id": "baker",
+      "appearance": "cottage"
+    },
+    "19,23": {
+      "id": "home",
+      "appearance": "cottage"
+    },
+    "26,23": {
+      "id": "mender",
+      "appearance": "cottage"
+    },
+    "33,23": {
+      "id": "inn",
+      "appearance": "inn"
+    },
+    "40,23": {
+      "id": "watch",
+      "appearance": "cottage"
+    },
+    "14,30": {
+      "id": "gardener",
+      "appearance": "cottage"
+    },
+    "21,30": {
+      "id": "potter",
+      "appearance": "cottage"
+    },
+    "33,30": {
+      "id": "carter",
+      "appearance": "cottage"
+    },
+    "40,30": {
+      "id": "herbalist",
+      "appearance": "cottage"
+    }
+  },
+  "props": {
+    "35,25": {
+      "label": "The Resting Lantern",
+      "solid": true,
+      "lines": [
+        "THE RESTING LANTERN",
+        "Rooms, warm meals, and a light in the tunnels. Elin welcomes travellers from Fern and Furion."
+      ]
+    },
+    "28,10": {
+      "label": "Northern road sign",
+      "solid": true,
+      "lines": [
+        "~~TO LUBIA~~ KEEP OUT",
+        "Seems like some text has been crossed out"
+      ]
+    },
+    "49,25": {
+      "label": "Eastern road sign",
+      "solid": true,
+      "lines": [
+        "TO FERN"
+      ]
+    },
+    "31,43": {
+      "label": "Southern road sign",
+      "solid": true,
+      "lines": [
+        "TO FURION"
+      ]
+    },
+    "14,19": {
+      "label": "Farm entrance",
+      "solid": true,
+      "lines": [
+        "JUNTO'S FARM",
+        "Your father's fences seem very old and unattended, not that you have ever tried to tend to the farm"
+      ]
+    },
+    "10,17": {
+      "solid": true
+    },
+    "11,17": {
+      "solid": true
+    },
+    "12,17": {
+      "solid": true
+    },
+    "13,17": {
+      "solid": true
+    },
+    "10,18": {
+      "solid": true
+    },
+    "13,18": {
+      "solid": true
+    },
+    "10,19": {
+      "solid": true
+    },
+    "13,19": {
+      "solid": true
+    },
+    "10,20": {
+      "solid": true
+    },
+    "13,20": {
+      "solid": true
+    },
+    "10,21": {
+      "solid": true
+    },
+    "11,21": {
+      "solid": true
+    },
+    "12,21": {
+      "solid": true
+    },
+    "13,21": {
+      "solid": true
+    },
+    "10,22": {
+      "solid": true
+    },
+    "11,23": {
+      "solid": true
+    },
+    "10,25": {
+      "solid": true
+    },
+    "12,18": {
+      "solid": false
+    },
+    "12,20": {
+      "solid": false
+    },
+    "29,28": {
+      "label": "The town well",
+      "solid": true
+    },
+    "25,28": {
+      "label": "Market stall",
+      "solid": true
+    },
+    "27,28": {
+      "label": "Market stall",
+      "solid": true
+    },
+    "24,28": {
+      "solid": true
+    },
+    "36,31": {
+      "solid": true
+    },
+    "32,28": {
+      "solid": true
+    },
+    "17,28": {
+      "solid": true
+    },
+    "14,33": {
+      "solid": false
+    },
+    "15,33": {
+      "solid": false
+    },
+    "16,33": {
+      "solid": false
+    },
+    "40,33": {
+      "solid": false
+    },
+    "42,33": {
+      "solid": false
+    },
+    "19,25": {
+      "solid": false
+    },
+    "16,28": {
+      "solid": false
+    },
+    "39,28": {
+      "solid": false
+    },
+    "11,20": {
+      "solid": true
+    },
+    "16,21": {
+      "solid": true
+    },
+    "23,20": {
+      "solid": true
+    },
+    "37,20": {
+      "solid": true
+    },
+    "44,21": {
+      "solid": true
+    },
+    "10,34": {
+      "solid": true
+    },
+    "18,35": {
+      "solid": true
+    },
+    "27,35": {
+      "solid": true
+    },
+    "38,35": {
+      "solid": true
+    },
+    "46,33": {
+      "solid": true
+    },
+    "47,23": {
+      "solid": true
+    }
+  }
+}

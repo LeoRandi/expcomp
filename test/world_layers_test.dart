@@ -1,3 +1,4 @@
+import 'exploration_test_support.dart';
 import 'package:expcomp/exploration/world_map.dart';
 import 'dart:io';
 import 'dart:ui' as ui;
@@ -11,6 +12,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  setupExplorationMaps();
   testWidgets('Layers sort by z, then baseline, preserving ties', (
     tester,
   ) async {

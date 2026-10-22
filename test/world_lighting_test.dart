@@ -1,3 +1,4 @@
+import 'exploration_test_support.dart';
 import 'package:expcomp/exploration/world_map.dart';
 import 'package:expcomp/exploration/cresca_map.dart';
 import 'package:expcomp/exploration/world_lighting.dart';
@@ -6,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  setupExplorationMaps();
   test('Rounded auras use the reduced radius along each axis', () {
     const light = Offset(10, 10);
     const expected = [0.0, 0.0, 0.0, 0.5, 0.75, 0.9, 1.0, 1.0];

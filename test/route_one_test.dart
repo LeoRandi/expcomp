@@ -9,6 +9,7 @@ import 'package:expcomp/exploration/route_one_scenery.dart';
 import 'package:expcomp/exploration/world_map.dart';
 import 'package:expcomp/global_presentation/pixel_ui/pixel_ui.dart';
 import 'package:expcomp/player/player.dart';
+import 'package:expcomp/inventory/item_catalog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -35,10 +36,18 @@ Future<void> _captureRoute(
 }
 
 void main() {
+  setupExplorationMaps();
   setUp(PixelAtlasCache.clear);
   final source = File(routeOneTextAsset).readAsStringSync();
   final floorSource = File(routeOneFloorAsset).readAsStringSync();
-  final map = parseRouteOne(source, floorSource: floorSource);
+  final chestSource = File(routeOneChestsAsset).readAsStringSync();
+  final gateSource = File(routeOneGatesAsset).readAsStringSync();
+  final map = parseRouteOne(
+    source,
+    floorSource: floorSource,
+    chestSource: chestSource,
+    gateSource: gateSource,
+  );
 
   test(
     'Route 1 uses the author map for terrain, collision, lights and house',
@@ -64,14 +73,14 @@ void main() {
       }
       expect(map.isSolid(-1, 10), isTrue);
       expect(map.isSolid(55, 10), isTrue);
-      expect(map.torches, hasLength('i'.allMatches(source).length));
+      expect(map.torches, hasLength('i'.allMatches(map.cells!.join()).length));
       expect(
         map.props.where((p) => p.kind == PropKind.rock),
-        hasLength('r'.allMatches(source).length),
+        hasLength('r'.allMatches(map.cells!.join()).length),
       );
       expect(
         map.props.where((p) => p.kind == PropKind.chest),
-        hasLength('C'.allMatches(source).length),
+        hasLength('C'.allMatches(map.cells!.join()).length),
       );
       expect(
         map.props.every((p) => p.solid && !p.isReadable && p.lines.isEmpty),
@@ -97,13 +106,20 @@ void main() {
 
   test('Malformed maps fail before entering a broken scene', () {
     expect(
-      () => parseRouteOne('X0X\nX-X\nX0', floorSource: floorSource),
+      () => parseRouteOne(
+        'X0X\nX-X\nX0',
+        floorSource: floorSource,
+        chestSource: chestSource,
+        gateSource: gateSource,
+      ),
       throwsFormatException,
     );
     expect(
       () => parseRouteOne(
         source.replaceFirst('X', '?'),
         floorSource: floorSource,
+        chestSource: chestSource,
+        gateSource: gateSource,
       ),
       throwsFormatException,
     );
@@ -111,30 +127,88 @@ void main() {
       () => parseRouteOne(
         source.replaceFirst('hhh', 'hh-'),
         floorSource: floorSource,
+        chestSource: chestSource,
+        gateSource: gateSource,
       ),
-      throwsFormatException,
-    );
-    expect(
-      () => parseRouteOne(source, floorSource: floorSource.substring(1)),
       throwsFormatException,
     );
     expect(
       () => parseRouteOne(
         source,
-        floorSource: floorSource.replaceFirst('X', 'g'),
+        floorSource: floorSource.substring(1),
+        chestSource: chestSource,
+        gateSource: gateSource,
       ),
       throwsFormatException,
     );
+    expect(
+      () => parseRouteOne(
+        source,
+        floorSource: floorSource.replaceFirst('-', 'g'),
+        chestSource: chestSource,
+        gateSource: gateSource,
+      ),
+      throwsFormatException,
+    );
+  });
+
+  test(
+    'Numbered chest map assigns catalog rewards and validates definitions',
+    () {
+      final chests = {
+        for (final prop in map.props.where((p) => p.chest != null))
+          prop.chest!.id: prop.chest!,
+      };
+      expect(chests.length, 8);
+      expect(chests['r1:2']!.item, meat);
+      expect(chests['r1:2']!.quantity, 2);
+      expect(chests['r1:3']!.item, moonlessNecklace);
+      expect(chests['r1:3']!.quantity, 1);
+      expect(chests.values.where((chest) => chest.item == null).length, 6);
+      for (final invalid in [
+        chestSource.replaceFirst('Meat x 2', 'Missing item x 2'),
+        chestSource.replaceFirst('Meat x 2', 'Meat x 0'),
+        chestSource.replaceFirst('1: None', '2: None'),
+        chestSource.replaceFirst('7', '-'),
+      ]) {
+        expect(
+          () => parseRouteOne(
+            source,
+            floorSource: floorSource,
+            chestSource: invalid,
+            gateSource: gateSource,
+          ),
+          throwsFormatException,
+        );
+      }
+    },
+  );
+
+  test('Players claim each chest once, including empty ones', () {
+    final player = Player();
+    expect(player.openChest('r1:2', item: meat, quantity: 2), isTrue);
+    expect(player.inventory.quantityOf(meat), 2);
+    expect(player.openChest('r1:2', item: meat, quantity: 2), isFalse);
+    expect(player.inventory.quantityOf(meat), 2);
+    expect(player.openChest('r1:1'), isTrue);
+    expect(player.hasOpenedChest('r1:1'), isTrue);
+    expect(player.openChest('r1:1'), isFalse);
+    expect(Player().hasOpenedChest('r1:2'), isFalse);
+    expect(
+      () => player.openChest('bad', item: meat, quantity: 0),
+      throwsArgumentError,
+    );
+    expect(player.hasOpenedChest('bad'), isFalse);
   });
 
   test('Floor and object layers remain independent under rocks and gates', () {
     expect(map.tileAt(4, 6), 'r');
     expect(map.floorAt(4, 6), '.');
     expect(map.isSolid(4, 6), isTrue);
-    expect(map.tileAt(26, 54), '0');
+    expect(map.tileAt(26, 54), '-');
     expect(map.floorAt(26, 54), '.');
     expect(map.isSolid(26, 54), isFalse);
-    expect(map.floorAt(54, 4), '-', reason: 'Legacy floor 0 marker is stone.');
+    expect(map.floorAt(54, 4), '-', reason: 'The eastern gate has stone ground.');
     final floors = floorSource.trimRight().split(RegExp(r'\r?\n'));
     for (var y = 0; y < map.rows; y++) {
       for (var x = 0; x < map.columns; x++) {
@@ -331,16 +405,48 @@ void main() {
       ); // Leave grass at 17,50.
       expect(find.byKey(const ValueKey('player-grass-cover')), findsNothing);
       await walkExplorationTo(tester, const Offset(21, 35), map: map);
-      await stepExploration(
-        tester,
-        const Offset(1, 0),
-      ); // Inert chest at 22,35.
+      await stepExploration(tester, const Offset(1, 0)); // Chest at 22,35.
       expect(explorationPlayerTile(tester), const Offset(21, 35));
+      expect(find.text('You got a Moonless necklace x 1'), findsOneWidget);
+      expect(player.inventory.quantityOf(moonlessNecklace), 1);
+      final chestSemantics = find.descendant(
+        of: find.byKey(const ValueKey('route-prop-chest-22-35')),
+        matching: find.byType(Semantics),
+      );
+      expect(
+        tester.widget<Semantics>(chestSemantics).properties.label,
+        'Open chest',
+      );
+      await tester.tap(find.byKey(const ValueKey('close-chest-dialogue')));
+      await tester.pumpAndSettle();
       await tester.sendKeyEvent(LogicalKeyboardKey.keyE);
       await tester.pumpAndSettle();
-      expect(find.byType(Dialog), findsNothing);
+      expect(find.text("It's empty..."), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('close-chest-dialogue')));
+      await tester.pumpAndSettle();
       expect(player.inventory, same(inventory));
       if (size.width == 800) await _captureRoute(tester, screen, 'chest');
+      await walkExplorationTo(tester, const Offset(34, 38), map: map);
+      await tester.tap(find.byKey(const ValueKey('route-prop-chest-33-38')));
+      await tester.pumpAndSettle();
+      expect(find.text('You got a Meat x 2'), findsOneWidget);
+      expect(player.inventory.quantityOf(meat), 2);
+      await tester.tap(find.byKey(const ValueKey('close-chest-dialogue')));
+      await tester.pumpAndSettle();
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyE);
+      await tester.pumpAndSettle();
+      expect(find.text("It's empty..."), findsOneWidget);
+      expect(player.inventory.quantityOf(meat), 2);
+      await tester.tap(find.byKey(const ValueKey('close-chest-dialogue')));
+      await tester.pumpAndSettle();
+      await walkExplorationTo(tester, const Offset(43, 28), map: map);
+      await tester.tap(find.byKey(const ValueKey('interact-npc')));
+      await tester.pumpAndSettle();
+      expect(find.text("It's empty..."), findsOneWidget);
+      expect(player.hasOpenedChest('r1:4'), isTrue);
+      expect(player.inventory.quantityOf(meat), 2);
+      await tester.tap(find.byKey(const ValueKey('close-chest-dialogue')));
+      await tester.pumpAndSettle();
       await walkExplorationTo(tester, const Offset(19, 16), map: map);
       await stepExploration(tester, const Offset(0, -1)); // Closed house.
       expect(explorationPlayerTile(tester), const Offset(19, 16));
@@ -362,6 +468,20 @@ void main() {
       expect(find.byKey(const ValueKey(WorldArea.town)), findsOneWidget);
       expect(explorationPlayerTile(tester), const Offset(29, 1));
       expect(player.inventory, same(inventory));
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+      await tester.pump();
+      await finishAreaTransition(tester);
+      await walkExplorationTo(tester, const Offset(21, 35), map: map);
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyE);
+      await tester.pumpAndSettle();
+      expect(find.text("It's empty..."), findsOneWidget);
+      expect(player.inventory.quantityOf(moonlessNecklace), 1);
+      expect(
+        tester.widget<Semantics>(chestSemantics).properties.label,
+        'Open chest',
+      );
+      await tester.tap(find.byKey(const ValueKey('close-chest-dialogue')));
+      await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
     });
   }

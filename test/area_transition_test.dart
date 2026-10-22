@@ -8,7 +8,6 @@ import 'package:expcomp/global_presentation/pixel_ui/pixel_ui.dart';
 import 'package:expcomp/inventory/inventory_menu.dart';
 import 'package:expcomp/main.dart';
 import 'package:expcomp/party/party_menu.dart';
-import 'package:expcomp/player/player.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -87,6 +86,7 @@ Map<String, Offset> _residents(WidgetTester tester) => {
 };
 
 void main() {
+  setupExplorationMaps();
   setUp(PixelAtlasCache.clear);
 
   test('Exact cover and aperture milestones use .5/.2/.5 seconds', () {
@@ -312,7 +312,7 @@ void main() {
     'Both NPC teleports close and reopen around the player, preserving inventory',
     (tester) async {
       await warmExplorationAssets(tester);
-      final player = Player.demo();
+      final player = playerWithTestItems();
       final inventory = player.inventory;
       await tester.pumpWidget(
         MaterialApp(

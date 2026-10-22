@@ -1,13 +1,5 @@
 import 'dart:ui';
-import 'world_layers.dart';
-
-/// Decorative standing torches beside the testing area's paths.
-const crescaTorches = [
-  Offset(6, 11),
-  Offset(14, 9),
-  Offset(8, 4),
-  Offset(11, 16),
-];
+import 'world_map.dart';
 
 enum BuildingAppearance { cottage, inn }
 
@@ -28,31 +20,10 @@ class MapBuilding {
   final BuildingAppearance appearance;
 }
 
-const crescaBuildings = [
-  MapBuilding(
-    id: 'west',
-    bounds: Rect.fromLTWH(5, 6, 3, 3),
-    footprint: Rect.fromLTWH(5, 7, 3, 2),
-    wallZ: WorldZ.actor,
-    roofZ: WorldZ.roof,
-  ),
-  MapBuilding(
-    id: 'east',
-    bounds: Rect.fromLTWH(12, 3, 3, 3),
-    footprint: Rect.fromLTWH(12, 4, 3, 2),
-    wallZ: WorldZ.actor,
-    roofZ: WorldZ.roof,
-  ),
-];
-
-/// Walls and closed doors are solid; projected roofs are walkable below.
-final crescaHouses = [for (final b in crescaBuildings) b.footprint];
-
+// Compatibility accessors derive from the testing area's text maps.
+List<Offset> get crescaTorches => testingMap.torches;
+List<MapBuilding> get crescaBuildings => testingMap.buildings;
+List<Rect> get crescaHouses => [for (final b in crescaBuildings) b.footprint];
 bool isHouseTile(int column, int row) =>
     crescaHouses.any((house) => house.contains(Offset(column + .5, row + .5)));
-
-bool isRoadTile(int column, int row) =>
-    !isHouseTile(column, row) &&
-    ((column >= 9 && column <= 10 && row >= 3 && row <= 16) ||
-        (row == 9 && column >= 6 && column <= 10) ||
-        (row == 6 && column >= 9 && column <= 13));
+bool isRoadTile(int column, int row) => testingMap.isRoad(column, row);

@@ -1,3 +1,4 @@
+import 'exploration_test_support.dart';
 import 'dart:io';
 import 'dart:ui' as ui;
 
@@ -91,6 +92,7 @@ Future<void> _capture(WidgetTester tester, GlobalKey key, String path) async {
 }
 
 void main() {
+  setupExplorationMaps();
   setUp(PixelAtlasCache.clear);
 
   test(
