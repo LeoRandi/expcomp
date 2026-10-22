@@ -183,17 +183,17 @@ void main() {
     await warmExplorationAssets(tester);
     await tester.pumpWidget(const MyApp());
     await tester.pumpAndSettle();
-    await walkExplorationTo(tester, const Offset(20, 3));
+    await walkExplorationTo(tester, const Offset(29, 3));
     final hold = await _press(tester, 'up');
     await tester.pump(const Duration(milliseconds: 900));
     expect(find.byType(AreaTransitionOverlay), findsOneWidget);
     await finishAreaTransition(tester);
     await tester.pump(const Duration(seconds: 2));
-    expect(explorationPlayerTile(tester), const Offset(20, 38));
+    expect(explorationPlayerTile(tester), const Offset(27, 53));
     await hold.up();
     await tester.tap(_arrow('up'));
     await tester.pumpAndSettle();
-    expect(explorationPlayerTile(tester), const Offset(20, 37));
+    expect(explorationPlayerTile(tester), const Offset(27, 52));
     expect(tester.takeException(), isNull);
   });
 

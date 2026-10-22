@@ -180,6 +180,7 @@ class _PropPainter extends CustomPainter {
         block(1, 12, 5, 2, 0xFF6F667A);
         block(3, 14, 1, 2, 0xFFA5968E);
       case PropKind.rubble:
+      case PropKind.rock:
         block(1, 10, 14, 5, shadow);
         block(2, 6, 5, 7, 0xFF5C6066);
         block(7, 3, 5, 10, 0xFF73757C);
@@ -202,6 +203,7 @@ class _PropPainter extends CustomPainter {
           }
         }
       case PropKind.crates:
+      case PropKind.chest:
         block(2, 4, 12, 11, shadow);
         block(2, 3, 11, 10, wood);
         for (final y in [4.0, 8.0, 12.0]) {

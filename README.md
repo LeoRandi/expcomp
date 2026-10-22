@@ -28,7 +28,7 @@ The provisional world outline is in [docs/story.md](docs/story.md). Town layout,
 residents and dialogue live in `lib/exploration/cresca_town.dart`; the original
 20×20 testing map remains in `cresca_map.dart`, with its NPCs in `world_map.dart`.
 
-Cresca sits in the middle of a 40×40 cavern, four times the testing area's surface.
+Cresca sits in the middle of a 55×55 cavern (3,025 tiles).
 Torches stand beside the cobblestone roads. Start outside your
 home and speak to the veiled stranger immediately to your right for transport to
 the testing grounds. Speak to the Waykeeper there to return home. The original
@@ -57,8 +57,18 @@ flutter analyze lib test
 Town cottage doors are one movement tile tall. The Resting Lantern inn has
 violet timber, a sea-green roof, a striped canopy, and a readable name sign.
 
-The four road ends have arrow markers for testing area transitions. Walk into the
-north, east, south, or west boundary to arrive just inside the opposite edge of
-Cresca. Each crossing has a 1.2-second directional blackout followed by a 1.2-second opposing reveal. The stranger and Waykeeper use a circular close/reopen instead.
+Cresca's north road enters Route 1, loaded directly from
+[the object map](assets/text-maps/r1.txt) and
+[floor layer](assets/text-maps/r1-floor.txt). Its southern gate returns to town.
+The route includes cave walls, sand paths, grass that covers the player's lower
+half throughout movement, a closed cottage, jagged rocks, and decorative closed chests.
+Sand paths continue beneath props and gates. Rocks, chests,
+and the house have no interactions; the other route gates are placeholders.
+The east, south, and west town boundaries still wrap to the opposite town edge.
+Each crossing has a 1.2-second directional blackout followed by a 1.2-second opposing reveal. The stranger and Waykeeper use a circular close/reopen instead.
 The entire screen, including the header and controls, is covered; input and NPC
 routines stay paused until the reveal finishes. Arrival titles play afterward.
+
+**Screen-changing animations must ALWAYS play for every screen or scene change.**
+Use the shared close/swap-under-black/opposing-reveal sequence for all travel and
+gameplay screen changes. See [the mandatory transition rules](docs/map_layers.md#area-transitions).

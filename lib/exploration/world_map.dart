@@ -3,7 +3,7 @@ import 'dart:ui';
 import 'cresca_map.dart';
 import 'area_transition.dart';
 
-enum WorldArea { town, testing }
+enum WorldArea { town, testing, routeOne }
 
 enum NpcAction { talk, testing, town, battle }
 
@@ -64,6 +64,8 @@ enum PropKind {
   garden,
   fence,
   gate,
+  rock,
+  chest,
 }
 
 class MapProp {
@@ -98,6 +100,8 @@ class ExplorationMap {
     required this.roadAt,
     this.props = const [],
     this.exits = const [],
+    this.cells,
+    this.floorCells,
   });
 
   final WorldArea area;
@@ -112,6 +116,24 @@ class ExplorationMap {
   final List<MapProp> props;
   final List<AreaExit> exits;
   final bool Function(int, int) roadAt;
+
+  /// Optional text terrain; cell coordinates are shared by art and collision.
+  final List<String>? cells;
+
+  /// Separate ground layer, so paths can continue under props and gates.
+  final List<String>? floorCells;
+
+  String? tileAt(int column, int row) =>
+      cells != null && column >= 0 && row >= 0 && column < columns && row < rows
+      ? cells![row][column]
+      : null;
+
+  bool isGrass(int column, int row) => tileAt(column, row) == 'g';
+
+  String? floorAt(int column, int row) {
+    if (column < 0 || row < 0 || column >= columns || row >= rows) return null;
+    return floorCells?[row][column] ?? (tileAt(column, row) == '.' ? '.' : '-');
+  }
 
   bool contains(Offset tile) =>
       tile.dx >= 0 && tile.dy >= 0 && tile.dx < columns && tile.dy < rows;
@@ -128,9 +150,13 @@ class ExplorationMap {
 
   /// Road openings cut through the cavern rim to the map boundary.
   bool isCavernWall(int column, int row) =>
-      area == WorldArea.town &&
-      (column == 0 || column == columns - 1 || row <= 1 || row == rows - 1) &&
-      !roadAt(column, row);
+      tileAt(column, row) == 'X' ||
+      (area == WorldArea.town &&
+          (column == 0 ||
+              column == columns - 1 ||
+              row <= 1 ||
+              row == rows - 1) &&
+          !roadAt(column, row));
 
   bool isRoad(int column, int row) =>
       !isSolid(column, row) && roadAt(column, row);

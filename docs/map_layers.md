@@ -49,8 +49,9 @@ cells. Do not append actors outside the layered stack.
 
 `ExplorationMap` in `world_map.dart` supplies rectangular map dimensions, spawn,
 buildings, scenery, torches, NPCs, and roads. `crescaTown` in `cresca_town.dart`
-occupies 40×40 cells (1600), compared with the original testing map's 20×20 (400).
-The settlement is centered within the cavern, with dark space north and south.
+occupies 55×55 cells (3025), compared with the original testing map's 20×20 (400).
+The settlement's building bounds are centered at (27.5,27), within half a tile of
+the cavern's center (27.5,27.5), with dark outskirts on every side.
 It has nine cottages, seven NPCs, a market and well, herb beds, benches, signs,
 cavern fungi, and rubble beside Junto's fenced farm to the west. Its rocky perimeter
 and solid scenery have explicit collision, independent of their artwork.
@@ -58,8 +59,8 @@ Town streets use the existing `blocks__cobblestone_bricks.png.png` ground tile,
 one 16×16 image per road cell, on the road layer above the rough granite floor.
 The paving connects every doorstep, both main streets, and the market junction.
 
-The player starts at zero-based (11,18), directly south of their home door. The
-stranger at (12,18) offers travel to the testing grounds at (10,10). The Waykeeper
+The player starts at zero-based (20,25), directly south of their home door. The
+stranger at (21,25) offers travel to the testing grounds at (10,10). The Waykeeper
 at (11,10) there offers the return trip. Travel changes the map within the same
 exploration session, preserving the player and inventory. Each arrival resets
 local residents to their initial routine positions. Houses remain closed.
@@ -67,8 +68,8 @@ local residents to their initial routine positions. Houses remain closed.
 Every street in the town core lies within a torch's fully visible radius without
 relying on the player's light. The north, east, and south roads continue to the
 map boundaries with no additional torches; their far ends are dark. Those road
-openings pass through the cavern rim and currently wrap to the opposite side of
-Cresca as transition test points. Torches occupy
+openings pass through the cavern rim. The north road enters Route 1; the other
+three town boundaries wrap to the opposite side as transition test points. Torches occupy
 clear cells beside the paving, keeping every road cell free of torches. Outer
 corners remain dark. Warm pools below actors alternate
 slightly while the shared atmosphere retains the original stepped visibility.
@@ -99,15 +100,15 @@ Validation:
 ## Road signs and Junto's farm
 
 The old in-town signs have been removed. Three solid, readable signs sit beside
-roughly the middle of the outer roads: north at (19,7), east at (37,18), and south
-at (22,33). North reads TO LUBIA with that destination visibly crossed out, then
+roughly the middle of the outer roads: north at (28,10), east at (49,25), and south
+at (31,43). North reads TO LUBIA with that destination visibly crossed out, then
 KEEP OUT. Its second page comments on the crossed-out text. East reads TO FERN;
 south reads TO FURION. Bump a sign, tap it from an adjacent cell, or use the shared
 interaction button / E / Space. Reading pauses movement and residents as talking
 does; a sign can never be entered as a movement cell.
 
-Junto's farm occupies a closed 4x5 fence perimeter from (1,10) through (4,14),
-with a shut gate at (4,12), a solid two-page sign immediately outside at (5,12),
+Junto's farm occupies a closed 4x5 fence perimeter from (10,17) through (13,21),
+with a shut gate at (13,19), a solid two-page sign immediately outside at (14,19),
 and nearby rubble. Fence rails connect through tile edges, including corners.
 The gate remains solid. Its overgrown interior is inaccessible from outside.
 
@@ -121,9 +122,24 @@ and roof layering are unchanged.
 
 The inn's explicit `BuildingAppearance.inn` uses violet walls, sea-green shingles,
 a small glowing roof window, and a striped canopy. Its solid, readable sign at
-(26,18) names THE RESTING LANTERN and advertises rooms and warm meals on page two.
+(35,25) names THE RESTING LANTERN and advertises rooms and warm meals on page two.
 
 ## Area transitions
+
+**Mandatory rule: screen-changing animations MUST ALWAYS play for every screen
+or scene change.** This applies to cardinal area crossings, entering or leaving
+buildings, teleports, scripted travel, respawns, loading another location, and
+transitions to or from other gameplay screens. New travel and navigation code
+must use the shared transition animations; never switch a screen, map, or player
+location to another scene with an unanimated swap.
+
+Always close the view, swap the scene only under full black, then play the
+opposing reveal. Use the matching cardinal curtain for directional crossings
+and the player-centered circular iris for every other kind of change. Both
+phases cover the entire UI and block all input, including the app bar and
+buttons. The shared exploration travel path is `_travel` in
+`lib/exploration/exploration_page.dart`; other gameplay screens must follow the
+same lifecycle using `area_transition.dart`.
 
 The direction pad moves once on pointer down. After a half-second hold window,
 it repeats that movement every 200ms (first repeat at 0.7s). Releasing, pointer
@@ -160,10 +176,10 @@ The prototype's four two-cell openings are marked by ground arrows:
 
 | Exit | Trigger cells | Arrival cell | Effect |
 | --- | --- | --- | --- |
-| North | (20,0), (21,0) | (20,38) | Upward curtain |
-| East | (39,19), (39,20) | (1,19) | Rightward curtain |
-| South | (20,39), (21,39) | (20,1) | Downward curtain |
-| West | (0,19), (0,20) | (38,19) | Leftward curtain |
+| North | (29,0), (30,0) | Route 1 (27,53) | Upward curtain |
+| East | (54,26), (54,27) | (1,26) | Rightward curtain |
+| South | (29,54), (30,54) | (29,1) | Downward curtain |
+| West | (0,26), (0,27) | (53,26) | Leftward curtain |
 
 The west end of the main street now reaches the boundary as well. Each arrival
 is one cell inside its edge to avoid immediate retriggering. Same-map crossings
@@ -172,7 +188,46 @@ inventory. The stranger and Waykeeper use the shared travel function's default
 circle effect, which is also available for future indoor transitions.
 
 Validation: `flutter test test/area_transition_test.dart` checks exact timing,
-pixel coverage of all five masks, opposing reveals, the four crossings at desktop
+pixel coverage of all five masks, opposing reveals, the three town wrap crossings at desktop
 and portrait sizes, input blocking during both halves, NPC/inventory preservation,
 and disposal. It also reads back actual rendered frames at the swap to verify
 every screen pixel is black, including the header and buttons.
+
+## Route 1 template
+
+`route_one.dart` loads `assets/text-maps/r1.txt` for objects and
+`assets/text-maps/r1-floor.txt` for ground, validates matching rectangular grids
+and 2-row by 3-column house footprints, and builds the map's collision, torches,
+props, and return gate. Text cells are available through
+`ExplorationMap.tileAt`; `X`, `r`, `h`, and `C` are solid. The house uses the same
+3x3 cottage art as Cresca, with its roof projected above the 3x2 `h` footprint.
+
+`ExplorationMap.floorAt` reads the independent floor layer: `.` is sand and `-`
+is granite. Floor draft `X`/`0` markers normalize to granite; they never add walls
+or gates. Sand is drawn below props and gates even when the object layer contains
+`r`, `C`, `i`, or `0` at that coordinate. Collision depends only on the object map.
+
+`route_one_scenery.dart` uses cave-sheet rock for walls, the castle atlas's closed
+chest, and the imported sand and grass tiles. Boulders are large, jagged sprites
+drawn on a 16×20 pixel grid with stable shape variants. Their visuals overhang a
+quarter tile upward while collision remains one cell and depth uses their feet.
+
+Ground grass sits at z=10. `GrassCoveredSprite` attaches the lower-half grass
+cover inside the player's animated bounds at the actor layer. The cover remains
+present between grass destinations, follows every movement frame, and disappears
+on leaving grass. Do not restore a fixed grass foreground on world tiles: that
+exposes the player's legs when moving vertically between them. Roofs and lighting
+remain above the complete player sprite and its cover.
+
+Cresca's north exit arrives at (27,53). Route 1's southern gate at (26..28,54)
+returns to (29,1) in Cresca. Both use the full cover/swap/reveal lifecycle. Text
+and art preload during the cover; the black frame waits until they are ready.
+The other `0` openings are inactive placeholders. Rocks and chests are solid
+scenery, the house stays closed, and no encounters or item rewards are attached.
+
+Validation: `flutter test test/route_one_test.dart` covers text/collision parity,
+house geometry, inert props, both travel directions at desktop and portrait
+sizes, independent sand beneath props/gates, lower-half grass pixels, and cover
+alignment throughout vertical movement into, between, and out of grass cells. It
+also writes `build/route1-grass.png`, `build/route1-chest.png`, and
+`build/route1-house.png`, and `build/route1-rocks.png` for visual review.

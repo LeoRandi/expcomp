@@ -1,5 +1,7 @@
 import 'package:expcomp/exploration/cresca_town.dart';
 import 'package:expcomp/exploration/world_map.dart';
+import 'package:expcomp/exploration/route_one.dart';
+import 'package:expcomp/exploration/route_one_scenery.dart';
 import 'package:expcomp/global_presentation/pixel_ui/pixel_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -9,11 +11,14 @@ import 'package:flutter_test/flutter_test.dart';
 /// does while its covering animation runs in real time.
 Future<void> warmExplorationAssets(WidgetTester tester) async {
   await tester.runAsync(() async {
+    await rootBundle.loadString(routeOneTextAsset);
+    await rootBundle.loadString(routeOneFloorAsset);
     final paths = {
       SunderedKeepUi.theme.atlas.assetPath,
       crescaPavingAsset,
       'assets/overworld/cottage/cottage.png',
       'assets/overworld/torch.png',
+      ...routeOneArtAssets,
       'assets/pixel_ui/showcase/sheets_16grid/07_overworld_mixto/'
           '16x16_Block_Texture_Set/blocks__granite.png.png',
       for (final map in [crescaTown, testingMap])
@@ -70,10 +75,14 @@ Future<void> stepExploration(WidgetTester tester, Offset direction) async {
   await tester.pumpAndSettle();
 }
 
-Future<void> walkExplorationTo(WidgetTester tester, Offset target) async {
+Future<void> walkExplorationTo(
+  WidgetTester tester,
+  Offset target, {
+  ExplorationMap map = crescaTown,
+}) async {
   final start = explorationPlayerTile(tester);
   final blockedActors = {
-    for (final npc in crescaTown.npcs) ...[npc.position, ...npc.route],
+    for (final npc in map.npcs) ...[npc.position, ...npc.route],
   };
   const directions = [Offset(1, 0), Offset(-1, 0), Offset(0, 1), Offset(0, -1)];
   final parents = <Offset, Offset?>{start: null};
@@ -81,10 +90,10 @@ Future<void> walkExplorationTo(WidgetTester tester, Offset target) async {
   for (var i = 0; i < queue.length; i++) {
     for (final direction in directions) {
       final next = queue[i] + direction;
-      if (crescaTown.isSolid(next.dx.toInt(), next.dy.toInt()) ||
+      if (map.isSolid(next.dx.toInt(), next.dy.toInt()) ||
           blockedActors.contains(next) ||
           parents.containsKey(next) ||
-          crescaTown.exits.any(
+          map.exits.any(
             (e) => e.trigger.contains(next + const Offset(.5, .5)),
           )) {
         continue;

@@ -17,20 +17,26 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   setUp(PixelAtlasCache.clear);
   test(
-    'Centered town in a 40 by 40 cavern with clear streets and roadside torches',
+    'Centered town in a 55 by 55 cavern with clear streets and roadside torches',
     () {
       final map = crescaTown;
       expect(
         Size(map.columns.toDouble(), map.rows.toDouble()),
-        const Size(40, 40),
+        const Size(55, 55),
       );
-      expect(map.columns * map.rows, testingMap.columns * testingMap.rows * 4);
+      expect(map.columns * map.rows, 3025);
       expect(map.buildings.length, greaterThanOrEqualTo(7));
       final settlement = map.buildings
           .map((b) => b.bounds)
           .reduce((a, b) => a.expandToInclude(b));
-      expect((settlement.center.dx - map.columns / 2).abs(), lessThan(2));
-      expect((settlement.center.dy - map.rows / 2).abs(), lessThan(2));
+      expect(
+        (settlement.center.dx - map.columns / 2).abs(),
+        lessThanOrEqualTo(.5),
+      );
+      expect(
+        (settlement.center.dy - map.rows / 2).abs(),
+        lessThanOrEqualTo(.5),
+      );
       final visited = <Offset>{map.spawn};
       final queue = [map.spawn];
       for (var i = 0; i < queue.length; i++) {
@@ -80,7 +86,7 @@ void main() {
       }
       for (var y = 0; y < map.rows; y++) {
         for (var x = 0; x < map.columns; x++) {
-          if (map.isRoad(x, y) && x <= 35 && y >= 14 && y <= 26) {
+          if (map.isRoad(x, y) && x >= 9 && x <= 44 && y >= 21 && y <= 33) {
             expect(
               worldDarknessAt(x, y, map.torches),
               0,
@@ -114,9 +120,9 @@ void main() {
         expect(map.props.any((p) => p.position == torch), isFalse);
       }
       expect(worldDarknessAt(0, 0, map.torches), 1);
-      expect(worldDarknessAt(39, 39, map.torches), 1);
-      expect(worldDarknessAt(20, 5, map.torches), 1);
-      expect(worldDarknessAt(20, 35, map.torches), 1);
+      expect(worldDarknessAt(54, 54, map.torches), 1);
+      expect(worldDarknessAt(29, 10, map.torches), 1);
+      expect(worldDarknessAt(29, 45, map.torches), 1);
       final home = map.buildings.singleWhere((b) => b.id == 'home');
       expect(
         map.spawn,
@@ -285,7 +291,7 @@ void main() {
     final world = find.byKey(const ValueKey('world-grid'));
     final viewport = find.byKey(const ValueKey('world-viewport'));
     final tile = tester.getSize(player).width;
-    expect(tester.getSize(world), Size(tile * 40, tile * 40));
+    expect(tester.getSize(world), Size(tile * 55, tile * 55));
     // Check both collision at home and camera/player alignment during a step.
     final start = tester.getTopLeft(world);
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);

@@ -16,6 +16,8 @@ import 'cresca_town.dart';
 import 'area_arrival_title.dart';
 import 'area_transition.dart';
 import 'building_tile.dart';
+import 'route_one.dart';
+import 'route_one_scenery.dart';
 import 'town_scenery.dart';
 import 'world_layers.dart';
 import 'world_lighting.dart';
@@ -52,6 +54,12 @@ class _ExplorationPageState extends State<ExplorationPage>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   static const visibleCells = 8.4;
   late ExplorationMap _map;
+  final _loadedMaps = <WorldArea, ExplorationMap>{
+    WorldArea.town: crescaTown,
+    WorldArea.testing: testingMap,
+  };
+  bool _initialMapReady = true;
+  bool _initialMapLoading = false;
   late int _column;
   late int _row;
   final Map<String, Offset> _npcPositions = {};
@@ -81,9 +89,13 @@ class _ExplorationPageState extends State<ExplorationPage>
       duration: areaTransitionDuration,
       animationBehavior: AnimationBehavior.preserve,
     );
-    _enterArea(widget.initialArea);
+    _enterMap(
+      widget.initialArea == WorldArea.testing ? testingMap : crescaTown,
+    );
+    _initialMapReady = widget.initialArea != WorldArea.routeOne;
     _routineTimer = Timer.periodic(const Duration(milliseconds: 1600), (_) {
-      if (_transitioning ||
+      if (!_initialMapReady ||
+          _transitioning ||
           _dialogueOpen ||
           _window != null ||
           !mounted ||
@@ -113,8 +125,36 @@ class _ExplorationPageState extends State<ExplorationPage>
     });
   }
 
-  void _enterArea(WorldArea area) {
-    _map = area == WorldArea.town ? crescaTown : testingMap;
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_initialMapReady && !_initialMapLoading) {
+      _initialMapLoading = true;
+      unawaited(_loadInitialMap());
+    }
+  }
+
+  Future<void> _loadInitialMap() async {
+    final map = await _resolveMap(widget.initialArea);
+    if (!mounted) return;
+    await _preloadMap(map);
+    if (!mounted) return;
+    setState(() {
+      _enterMap(map);
+      _initialMapReady = true;
+    });
+  }
+
+  Future<ExplorationMap> _resolveMap(WorldArea area) async {
+    final cached = _loadedMaps[area];
+    if (cached != null) return cached;
+    final map = await loadRouteOne(DefaultAssetBundle.of(context));
+    _loadedMaps[area] = map;
+    return map;
+  }
+
+  void _enterMap(ExplorationMap map) {
+    _map = map;
     _column = _map.spawn.dx.toInt();
     _row = _map.spawn.dy.toInt();
     _faceLeft = false;
@@ -139,10 +179,9 @@ class _ExplorationPageState extends State<ExplorationPage>
     final atlases = {
       _groundAtlas.assetPath,
       SunderedKeepUi.theme.atlas.assetPath,
-      if (map.area == WorldArea.town) ...[
-        _townRoadAtlas.assetPath,
-        'assets/overworld/cottage/cottage.png',
-      ],
+      if (map.area != WorldArea.testing) 'assets/overworld/cottage/cottage.png',
+      if (map.area == WorldArea.town) _townRoadAtlas.assetPath,
+      if (map.area == WorldArea.routeOne) ...routeOneArtAssets,
     };
     await Future.wait<void>([
       for (final path in images)
@@ -157,18 +196,22 @@ class _ExplorationPageState extends State<ExplorationPage>
     AreaTransitionStyle style = AreaTransitionStyle.circle,
     Offset? arrival,
   }) async {
-    if (_transitioning || _window != null) return;
+    if (!_initialMapReady || _transitioning || _window != null) return;
     _stopDirectionHold();
-    final target = area == WorldArea.town ? crescaTown : testingMap;
     setState(() {
       _transitioning = true;
       _revealing = false;
       _transitionStyle = style;
     });
     try {
+      // Start the cover immediately; prepare the text map and art behind it.
+      late ExplorationMap target;
       await Future.wait<void>([
         _cover.forward(from: 0).orCancel,
-        _preloadMap(target),
+        _resolveMap(area).then((map) async {
+          target = map;
+          if (mounted) await _preloadMap(map);
+        }),
       ], eagerError: true);
       if (!mounted) return;
       // Paint the completed black mask before swapping the scene, and paint
@@ -176,7 +219,7 @@ class _ExplorationPageState extends State<ExplorationPage>
       await WidgetsBinding.instance.endOfFrame;
       if (!mounted) return;
       setState(() {
-        if (_map.area != area) _enterArea(area);
+        if (_map.area != area) _enterMap(target);
         final position = arrival ?? target.spawn;
         _column = position.dx.toInt();
         _row = position.dy.toInt();
@@ -611,6 +654,7 @@ class _ExplorationPageState extends State<ExplorationPage>
 
   @override
   Widget build(BuildContext context) {
+    if (!_initialMapReady) return const ColoredBox(color: Colors.black);
     return PopScope<Object?>(
       canPop: !_transitioning && _window == null,
       onPopInvokedWithResult: (didPop, result) {
@@ -906,14 +950,16 @@ class _ExplorationPageState extends State<ExplorationPage>
                     WorldEntry(
                       z: WorldZ.road,
                       child: Positioned.fill(
-                        child: PixelAtlasBuilder(
-                          atlas: _map.area == WorldArea.town
-                              ? _townRoadAtlas
-                              : SunderedKeepUi.theme.atlas,
-                          builder: (context, image, error) => CustomPaint(
-                            painter: _VillagePainter(_map, image),
-                          ),
-                        ),
+                        child: _map.area == WorldArea.routeOne
+                            ? RouteOneTerrain(map: _map)
+                            : PixelAtlasBuilder(
+                                atlas: _map.area == WorldArea.town
+                                    ? _townRoadAtlas
+                                    : SunderedKeepUi.theme.atlas,
+                                builder: (context, image, error) => CustomPaint(
+                                  painter: _VillagePainter(_map, image),
+                                ),
+                              ),
                       ),
                     ),
                     WorldEntry(
@@ -958,7 +1004,7 @@ class _ExplorationPageState extends State<ExplorationPage>
                               top: (building.bounds.top + y) * tile,
                               width: tile,
                               height: tile,
-                              child: _map.area == WorldArea.town
+                              child: _map.area != WorldArea.testing
                                   ? BuildingTile(
                                       column: x,
                                       row: y,
@@ -972,7 +1018,13 @@ class _ExplorationPageState extends State<ExplorationPage>
                                     ),
                             ),
                           ),
-                    ...townSceneryEntries(_map, tile, onReadSign: _readSign),
+                    ...(_map.area == WorldArea.routeOne
+                        ? routeOneSceneryEntries(_map, tile)
+                        : townSceneryEntries(
+                            _map,
+                            tile,
+                            onReadSign: _readSign,
+                          )),
                     for (final npc in _map.npcs)
                       WorldEntry(
                         z: WorldZ.actor,
@@ -1029,12 +1081,15 @@ class _ExplorationPageState extends State<ExplorationPage>
                               'Player at column ${_column + 1}, row ${_row + 1}',
                           child: SizedBox(
                             key: const ValueKey('player'),
-                            child: Transform.flip(
-                              flipX: _faceLeft,
-                              child: Image.asset(
-                                _sprite,
-                                filterQuality: FilterQuality.none,
-                                fit: BoxFit.contain,
+                            child: GrassCoveredSprite(
+                              covered: _map.isGrass(_column, _row),
+                              child: Transform.flip(
+                                flipX: _faceLeft,
+                                child: Image.asset(
+                                  _sprite,
+                                  filterQuality: FilterQuality.none,
+                                  fit: BoxFit.contain,
+                                ),
                               ),
                             ),
                           ),

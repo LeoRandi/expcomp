@@ -207,7 +207,7 @@ void main() {
 
   for (final size in [const Size(800, 600), const Size(390, 844)]) {
     testWidgets(
-      'All cardinal crossings lock the full UI, swap under black and reveal at $size',
+      'Town wrap crossings lock the full UI, swap under black and reveal at $size',
       (tester) async {
         tester.view.physicalSize = size;
         tester.view.devicePixelRatio = 1;
@@ -219,25 +219,27 @@ void main() {
           RepaintBoundary(key: screenKey, child: const MyApp()),
         );
         await tester.pumpAndSettle();
-        for (final exit in crescaTown.exits) {
+        for (final exit in crescaTown.exits.where(
+          (exit) => exit.destination == WorldArea.town,
+        )) {
           final (start, key, inward) = switch (exit.style) {
             AreaTransitionStyle.north => (
-              const Offset(20, 1),
+              const Offset(29, 1),
               LogicalKeyboardKey.arrowUp,
               const Offset(0, -1),
             ),
             AreaTransitionStyle.east => (
-              const Offset(38, 19),
+              const Offset(53, 26),
               LogicalKeyboardKey.arrowRight,
               const Offset(1, 0),
             ),
             AreaTransitionStyle.south => (
-              const Offset(20, 38),
+              const Offset(29, 53),
               LogicalKeyboardKey.arrowDown,
               const Offset(0, 1),
             ),
             AreaTransitionStyle.west => (
-              const Offset(1, 19),
+              const Offset(1, 26),
               LogicalKeyboardKey.arrowLeft,
               const Offset(-1, 0),
             ),

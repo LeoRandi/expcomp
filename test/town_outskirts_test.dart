@@ -99,12 +99,14 @@ void main() {
       final map = crescaTown;
       final reachable = _paths(map.spawn);
       for (final edge in const [
-        Offset(20, 0),
-        Offset(21, 0),
-        Offset(39, 19),
-        Offset(39, 20),
-        Offset(20, 39),
-        Offset(21, 39),
+        Offset(29, 0),
+        Offset(30, 0),
+        Offset(54, 26),
+        Offset(54, 27),
+        Offset(29, 54),
+        Offset(30, 54),
+        Offset(0, 26),
+        Offset(0, 27),
       ]) {
         expect(map.isRoad(edge.dx.toInt(), edge.dy.toInt()), isTrue);
         expect(reachable.containsKey(edge), isTrue);
@@ -113,8 +115,8 @@ void main() {
           1,
         );
       }
-      // Light falls away along all three outer roads.
-      for (final p in const [Offset(21, 7), Offset(38, 19), Offset(21, 33)]) {
+      // Light falls away along the outer roads.
+      for (final p in const [Offset(30, 10), Offset(49, 26), Offset(30, 43)]) {
         expect(
           worldDarknessAt(p.dx.toInt(), p.dy.toInt(), map.torches),
           greaterThanOrEqualTo(.9),
@@ -134,10 +136,10 @@ void main() {
         );
       }
       expect(crescaFarmBounds.size, const Size(4, 5));
-      for (var y = 10; y <= 14; y++) {
-        for (var x = 1; x <= 4; x++) {
+      for (var y = 17; y <= 21; y++) {
+        for (var x = 10; x <= 13; x++) {
           final tile = Offset(x.toDouble(), y.toDouble());
-          if (x == 1 || x == 4 || y == 10 || y == 14) {
+          if (x == 10 || x == 13 || y == 17 || y == 21) {
             expect(
               map.props.any((p) => p.isFence && p.solid && p.position == tile),
               isTrue,
@@ -149,11 +151,11 @@ void main() {
         }
       }
       expect(
-        map.props.any((p) => p.kind == PropKind.rubble && p.position.dx < 3),
+        map.props.any((p) => p.kind == PropKind.rubble && p.position.dx < 12),
         isTrue,
       );
       final guard = map.npcs.singleWhere((n) => n.id == 'tamsin');
-      expect(guard.position.dy, inInclusiveRange(13, 15));
+      expect(guard.position.dy, inInclusiveRange(20, 22));
       expect(guard.lines.join(' '), contains('Lubia'));
       expect(map.npcs.any((n) => n.id == 'oren'), isFalse);
       expect(
@@ -256,9 +258,9 @@ void main() {
             );
           }
         }
-        await _walkTo(tester, const Offset(5, 11));
+        await _walkTo(tester, const Offset(14, 18));
         await _step(tester, const Offset(-1, 0));
-        expect(_playerTile(tester), const Offset(5, 11));
+        expect(_playerTile(tester), const Offset(14, 18));
         expect(find.byKey(const ValueKey('dialogue-text')), findsNothing);
         expect(tester.takeException(), isNull);
         if (size.width == 800) {

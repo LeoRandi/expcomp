@@ -2,6 +2,9 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+/// Mandatory for every screen/scene change: close, swap under full black, reveal.
+/// Use cardinal curtains for crossings and the iris for all other changes.
+/// See docs/map_layers.md for the required transition lifecycle.
 enum AreaTransitionStyle { north, east, south, west, circle }
 
 const areaTransitionDuration = Duration(milliseconds: 1200);
